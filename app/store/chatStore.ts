@@ -143,17 +143,13 @@ export const useChatStore = create<ChatState>()(
           const newSessions = state.chatSessions.filter(s => s.id !== sessionId);
           let newActiveId = state.activeChatSessionId;
           if (state.activeChatSessionId === sessionId) {
-            newActiveId = newSessions.length > 0 ? newSessions[0].id : null;
+            newActiveId = newSessions.length > 0 ? newSessions.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].id : null;
           }
           return {
             chatSessions: newSessions,
             activeChatSessionId: newActiveId,
           };
         });
-        // If no chats left after deletion, create a new one
-        if (get().chatSessions.length === 0) {
-            get().createNewChatSession();
-        }
       },
 
       renameChatSession: (sessionId, newName) => {

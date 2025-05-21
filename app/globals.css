@@ -133,3 +133,50 @@
 }
 
 /* Add other global styles or overrides here */
+
+/* Styles for markdown content within chat messages */
+.prose-chat-message {
+  font-size: 0.9rem; 
+  line-height: 1.6;
+}
+
+.prose-chat-message h1,
+.prose-chat-message h2,
+.prose-chat-message h3,
+.prose-chat-message h4,
+.prose-chat-message h5,
+.prose-chat-message h6 {
+  @apply font-semibold mb-1.5 mt-2.5;
+}
+.prose-chat-message h1 { @apply text-lg; }
+.prose-chat-message h2 { @apply text-base; }
+.prose-chat-message h3 { @apply text-sm font-medium; }
+
+.prose-chat-message p,
+.prose-chat-message ul,
+.prose-chat-message ol,
+.prose-chat-message blockquote {
+    @apply my-1.5;
+}
+
+/* This <pre> tag is the frame for the code block */
+.prose-chat-message pre {
+  @apply bg-gray-700 dark:bg-gray-800 rounded-md overflow-x-auto my-2 p-0; /* Frame background, remove its own padding */
+  max-width: 100%;
+}
+
+/* Inline code styling (code NOT in pre) */
+.prose-chat-message :not(pre) > code {
+  @apply bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 px-1 py-0.5 rounded text-xs;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  word-break: break-word;
+}
+
+/* Ensure lists inside prose have reasonable spacing */
+.prose-chat-message ul,
+.prose-chat-message ol {
+    @apply pl-5;
+}
+.prose-chat-message li > p { 
+    @apply my-0;
+}

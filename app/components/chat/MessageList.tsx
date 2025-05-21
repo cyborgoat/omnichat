@@ -7,10 +7,50 @@ import {
 import { BotMessageSquare, User } from 'lucide-react';
 import { Message } from "@/app/store/chatStore";
 import { AnimatePresence, motion } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 interface MessageListProps {
   messages: Message[];
 }
+
+// Reverting to a simpler props type for CodeBlock to avoid complex linter errors.
+// The essential functionality is in how SyntaxHighlighter is called.
+interface CodeBlockProps {
+  node?: any; 
+  inline?: boolean;
+  className?: string;
+  children?: React.ReactNode;
+  [key: string]: any; 
+}
+
+const CodeBlock = ({ node: _node, inline, className, children, ...props }: CodeBlockProps) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const match = /language-(\w+)/.exec(className || '');
+  return !inline && match ? (
+    <SyntaxHighlighter
+      style={vscDarkPlus}
+      customStyle={{ 
+        padding: '1rem', 
+        margin: '0',
+        backgroundColor: '#1d1f21'
+      }}
+      codeTagProps={{ style: { backgroundColor: 'transparent' } }}
+      language={match[1]}
+      PreTag="div" 
+      {...props}
+    >
+      {String(children).replace(/\n$/, '')}
+    </SyntaxHighlighter>
+  ) : (
+    <code className={className} {...props}>
+      {children}
+    </code>
+  );
+};
 
 export default function MessageList({ messages }: MessageListProps) {
   if (messages.length === 0) {
@@ -26,7 +66,7 @@ export default function MessageList({ messages }: MessageListProps) {
   return (
     <div className="space-y-5 p-1 md:p-4 flex-grow">
       <AnimatePresence initial={false}>
-        {messages.map((msg, index) => (
+        {messages.map((msg) => (
           <motion.div
             key={msg.id}
             layout
@@ -37,13 +77,13 @@ export default function MessageList({ messages }: MessageListProps) {
             className={`flex items-end space-x-2.5 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
           >
             {msg.sender === "bot" && (
-              <BotMessageSquare size={28} className="text-indigo-500 mb-1 flex-shrink-0" />
+              <BotMessageSquare size={28} className="text-indigo-500 mb-1 flex-shrink-0 self-start mt-1" />
             )}
             <div
-              className={`max-w-lg lg:max-w-xl xl:max-w-2xl px-4 py-3 rounded-xl shadow-md text-sm break-words 
+              className={`max-w-xl lg:max-w-3xl xl:max-w-4xl px-4 py-3 rounded-xl shadow-md 
                 ${msg.sender === "user"
-                  ? "bg-blue-600 text-white rounded-br-none shadow-blue-200/50 dark:shadow-blue-900/50"
-                  : "bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-none shadow-gray-300/50 dark:shadow-gray-900/50"}`}
+                  ? "bg-blue-600 text-white rounded-br-none shadow-blue-200/50 dark:shadow-blue-900/50 not-prose" 
+                  : "bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-none shadow-gray-300/50 dark:shadow-gray-900/50 prose-chat-message dark:prose-invert"}`}
             >
               {msg.sender === "bot" && msg.isStreaming && !msg.text && (
                 <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400">
@@ -53,7 +93,17 @@ export default function MessageList({ messages }: MessageListProps) {
                   <span className="text-xs">Assistant is typing...</span>
                 </div>
               )}
-              <p className="whitespace-pre-wrap">{msg.text}</p>
+              {msg.sender === 'bot' ? (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeRaw]}
+                  components={{ code: CodeBlock }}
+                >
+                  {msg.text}
+                </ReactMarkdown>
+              ) : (
+                <p className="whitespace-pre-wrap">{msg.text}</p>
+              )}
               {msg.sender === "bot" && msg.thinkingSteps && msg.thinkingSteps.length > 0 && (
                 <Accordion type="single" collapsible className="w-full mt-2.5 text-xs">
                   <AccordionItem value={`thinking-${msg.id}`} className="border-t border-gray-300 dark:border-gray-600 pt-1.5">
@@ -77,7 +127,7 @@ export default function MessageList({ messages }: MessageListProps) {
               )}
             </div>
             {msg.sender === "user" && (
-              <User size={28} className="text-blue-500 mb-1 flex-shrink-0" />
+              <User size={28} className="text-blue-500 mb-1 flex-shrink-0 self-start mt-1" />
             )}
           </motion.div>
         ))}

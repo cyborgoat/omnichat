@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, Part, Content } from '@google/generative-ai';
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, Content } from '@google/generative-ai';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 // We will add Qwen specific imports or helpers later if needed.
@@ -62,9 +62,10 @@ async function* handleGeminiRequest(apiKey: string, modelId: string, messages: C
             yield text;
         }
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
       console.error("Gemini streaming error:", e);
-      throw new Error(`Gemini API streaming error: ${e.message}`);
+      const message = e instanceof Error ? e.message : String(e);
+      throw new Error(`Gemini API streaming error: ${message}`);
   }
 }
 
@@ -197,9 +198,10 @@ async function* handleOpenAIRequest(apiKey: string, modelId: string, messages: C
         yield chunk.choices[0].delta.content;
         }
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("OpenAI streaming error:", e);
-    throw new Error(`OpenAI API streaming error: ${e.message}`);
+    const message = e instanceof Error ? e.message : String(e);
+    throw new Error(`OpenAI API streaming error: ${message}`);
   }
 }
 
@@ -230,9 +232,10 @@ async function* handleAnthropicRequest(apiKey: string, modelId: string, messages
         yield event.delta.text;
         }
     }
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error("Anthropic streaming error:", e);
-    throw new Error(`Anthropic API streaming error: ${e.message}`);
+    const message = e instanceof Error ? e.message : String(e);
+    throw new Error(`Anthropic API streaming error: ${message}`);
   }
 }
 
@@ -279,21 +282,21 @@ export async function POST(req: NextRequest) {
         for await (const chunk of streamGenerator) {
           await writer.write(encoder.encode(chunk));
         }
-      } catch (error: any) {
-        console.error('Error during stream generation piping:', error.message);
+      } catch (error: unknown) {
+        console.error('Error during stream generation piping:', error instanceof Error ? error.message : String(error));
         try {
             // Signal an error through the stream. Client must be able to parse this.
             // Using a simple prefix. Consider JSON for structured errors if client can handle it.
-            const errorMessage = `STREAM_ERROR: ${error.message || 'Unknown stream error'}`;
+            const errorMessage = `STREAM_ERROR: ${error instanceof Error ? error.message : 'Unknown stream error'}`;
             await writer.write(encoder.encode(`\n${errorMessage}\n`));
-        } catch (writeError) {
-            console.error("Error writing error to stream:", writeError);
+        } catch (writeError: unknown) {
+            console.error("Error writing error to stream:", writeError instanceof Error ? writeError.message : String(writeError));
         }
       } finally {
         try {
             await writer.close();
-        } catch (closeError) {
-            console.error("Error closing stream writer:", closeError);
+        } catch (closeError: unknown) {
+            console.error("Error closing stream writer:", closeError instanceof Error ? closeError.message : String(closeError));
         }
       }
     })();
@@ -306,8 +309,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
-  } catch (error: any) {
-    console.error('Error in /api/chat POST (pre-stream):', error.message, error.stack);
-    return NextResponse.json({ error: error.message || 'An unknown server error occurred' }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'An unknown server error occurred';
+    const stack = error instanceof Error ? error.stack : undefined;
+    console.error('Error in /api/chat POST (pre-stream):', message, stack);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 } 

@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu as MenuIcon, X as XIcon, PlusCircle, Settings2, Trash2, Edit3, Eye, EyeOff } from "lucide-react";
+import { Menu as MenuIcon, X as XIcon, PlusCircle, Settings2, Trash2, Edit3, Eye, EyeOff, Sun, Moon } from "lucide-react";
 import { useChatStore, Model } from "@/app/store/chatStore";
 import {
   Select,
@@ -17,6 +17,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import { useTheme } from "next-themes";
+import React from "react";
 
 export default function LeftSideMenu() {
   const {
@@ -42,6 +44,12 @@ export default function LeftSideMenu() {
   const [sessionNewName, setSessionNewName] = useState("");
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(null);
   const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const selectedModel = availableModels.find(m => m.id === selectedModelId);
   const currentProvider = selectedModel?.provider;
@@ -104,15 +112,28 @@ export default function LeftSideMenu() {
     >
       <div className="flex items-center justify-between mb-1 absolute top-3 left-3 right-3 z-20">
           {!isMenuCollapsed && <h1 className="text-xl font-semibold pl-1 text-white">Omnichat</h1>}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleMenu}
-            className="hover:bg-gray-700/50 text-gray-400 hover:text-white ml-auto"
-            aria-label={isMenuCollapsed ? "Open menu" : "Close menu"}
-          >
-            {isMenuCollapsed ? <MenuIcon size={24} /> : <XIcon size={24} />}
-          </Button>
+          <div className="flex items-center ml-auto">
+            {!isMenuCollapsed && mounted && (
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
+                    className="hover:bg-gray-700/50 text-gray-400 hover:text-white mr-1 h-9 w-9"
+                    aria-label="Toggle theme"
+                >
+                    {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
+                </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleMenu}
+              className="hover:bg-gray-700/50 text-gray-400 hover:text-white ml-auto"
+              aria-label={isMenuCollapsed ? "Open menu" : "Close menu"}
+            >
+              {isMenuCollapsed ? <MenuIcon size={24} /> : <XIcon size={24} />}
+            </Button>
+          </div>
       </div>
 
       <motion.div
