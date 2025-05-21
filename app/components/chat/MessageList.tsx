@@ -4,7 +4,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { BotMessageSquare, User } from 'lucide-react';
+import { BotMessageSquare, User, Copy, Check } from 'lucide-react';
 import { Message } from "@/app/store/chatStore";
 import { AnimatePresence, motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -12,42 +12,86 @@ import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { prism as lightTheme } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { useTheme } from 'next-themes';
+import React, { useState, useEffect } from 'react';
 
 interface MessageListProps {
   messages: Message[];
 }
 
-// Using the original type but with eslint disable comments
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface CodeBlockProps {
-  node?: any; 
   inline?: boolean;
   className?: string;
   children?: React.ReactNode;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  [key: string]: any; 
 }
 
-const CodeBlock = ({ node: _node, inline, className, children, ...props }: CodeBlockProps) => {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+const CodeBlock = ({ inline, className, children }: CodeBlockProps) => {
+  const { theme } = useTheme();
+  const [isCopied, setIsCopied] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const match = /language-(\w+)/.exec(className || '');
+  const codeString = String(children).replace(/\n$/, '');
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(codeString).then(() => {
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000); // Reset after 2 seconds
+    });
+  };
+
+  if (!mounted) {
+    // Prevent hydration mismatch by not rendering theme-dependent UI on initial server render
+    return (
+      <div className="relative">
+        <pre className="bg-muted p-4 rounded-md overflow-x-auto text-sm">
+          <code>{codeString}</code>
+        </pre>
+      </div>
+    );
+  }
+
+  const currentStyle = theme === 'dark' ? vscDarkPlus : lightTheme;
+  const codeBgColor = theme === 'dark' ? '#1d1f21' : '#f5f5f5'; // Example light theme bg
+
   return !inline && match ? (
-    <SyntaxHighlighter
-      style={vscDarkPlus}
-      customStyle={{ 
-        padding: '1rem', 
-        margin: '0',
-        backgroundColor: '#1d1f21'
-      }}
-      codeTagProps={{ style: { backgroundColor: 'transparent' } }}
-      language={match[1]}
-      PreTag="div" 
-      {...props}
-    >
-      {String(children).replace(/\n$/, '')}
-    </SyntaxHighlighter>
+    <div className="relative group">
+      <SyntaxHighlighter
+        style={currentStyle}
+        customStyle={{
+          padding: '1rem',
+          paddingTop: '2.5rem', // Make space for the button
+          margin: '0',
+          backgroundColor: codeBgColor,
+          borderRadius: '0.375rem', // Corresponds to rounded-md
+          fontSize: '0.875rem' // text-sm
+        }}
+        codeTagProps={{ 
+          style: { 
+            backgroundColor: 'transparent',
+            fontFamily: 'var(--font-mono)' // Use mono font from globals
+          } 
+        }}
+        language={match[1]}
+        PreTag="div"
+      >
+        {codeString}
+      </SyntaxHighlighter>
+      <button 
+        onClick={handleCopy}
+        className="absolute top-2 right-2 p-1.5 bg-muted hover:bg-border text-muted-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring"
+        aria-label={isCopied ? "Copied!" : "Copy code"}
+      >
+        {isCopied ? <Check size={16} /> : <Copy size={16} />}
+      </button>
+    </div>
   ) : (
-    <code className={className} {...props}>
+    <code className={`${className} text-sm font-mono bg-muted px-1 py-0.5 rounded-sm`}>
       {children}
     </code>
   );
@@ -80,51 +124,54 @@ export default function MessageList({ messages }: MessageListProps) {
             {msg.sender === "bot" && (
               <BotMessageSquare size={28} className="text-primary mb-1 flex-shrink-0 self-start mt-1" />
             )}
-            <div
-              className={`max-w-xl lg:max-w-3xl xl:max-w-4xl px-4 py-3 rounded-xl shadow-md 
-                ${msg.sender === "user"
-                  ? "bg-primary text-primary-foreground rounded-br-none shadow-primary/20 not-prose" 
-                  : "bg-card text-card-foreground rounded-bl-none shadow-muted/20 prose-chat-message"}`}
-            >
-              {msg.sender === "bot" && msg.isStreaming && !msg.text && (
-                <div className="flex items-center space-x-2 text-muted-foreground">
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-75"></div>
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-150"></div>
-                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-300"></div>
-                  <span className="text-xs">Assistant is typing...</span>
-                </div>
-              )}
-              {msg.sender === 'bot' ? (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw]}
-                  components={{ code: CodeBlock }}
-                >
-                  {msg.text}
-                </ReactMarkdown>
-              ) : (
-                <p className="whitespace-pre-wrap">{msg.text}</p>
-              )}
-              {msg.sender === "bot" && msg.thinkingSteps && msg.thinkingSteps.length > 0 && (
-                <Accordion type="single" collapsible className="w-full mt-2.5 text-xs">
-                  <AccordionItem value={`thinking-${msg.id}`} className="border-t border-border pt-1.5">
-                    <AccordionTrigger className="text-muted-foreground hover:no-underline py-1.5 px-0 text-left">
-                      Show Reasoning ({msg.thinkingSteps.length} steps)
-                    </AccordionTrigger>
-                    <AccordionContent className="bg-muted p-2.5 rounded-md mt-1.5">
-                      <ul className="list-decimal list-inside space-y-1.5 text-muted-foreground">
-                        {msg.thinkingSteps.map((step, idx) => (
-                          <li key={idx}>{step}</li>
-                        ))}
-                      </ul>
-                    </AccordionContent>
-                  </AccordionItem>
-                </Accordion>
-              )}
+            <div className="flex flex-col max-w-xl lg:max-w-3xl xl:max-w-4xl"> 
+              <div
+                className={`px-4 py-3 rounded-xl shadow-md 
+                  ${msg.sender === "user"
+                    ? "bg-primary text-primary-foreground rounded-br-none shadow-primary/20" 
+                    : "bg-card text-card-foreground rounded-bl-none shadow-muted/20 prose-chat-message"}
+                  text-sm`}
+              >
+                {msg.sender === "bot" && msg.isStreaming && !msg.text && (
+                  <div className="flex items-center space-x-2 text-muted-foreground">
+                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-75"></div>
+                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-150"></div>
+                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-300"></div>
+                    <span className="text-xs">Assistant is typing...</span>
+                  </div>
+                )}
+                {msg.sender === 'bot' ? (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw]}
+                    components={{ code: CodeBlock }}
+                  >
+                    {msg.text}
+                  </ReactMarkdown>
+                ) : (
+                  <p className="whitespace-pre-wrap">{msg.text}</p>
+                )}
+                {msg.sender === "bot" && msg.thinkingSteps && msg.thinkingSteps.length > 0 && (
+                  <Accordion type="single" collapsible className="w-full mt-2.5 text-xs">
+                    <AccordionItem value={`thinking-${msg.id}`} className="border-t border-border pt-1.5">
+                      <AccordionTrigger className="text-muted-foreground hover:no-underline py-1.5 px-0 text-left">
+                        Show Reasoning ({msg.thinkingSteps.length} steps)
+                      </AccordionTrigger>
+                      <AccordionContent className="bg-muted p-2.5 rounded-md mt-1.5">
+                        <ul className="list-decimal list-inside space-y-1.5 text-muted-foreground">
+                          {msg.thinkingSteps.map((step, idx) => (
+                            <li key={idx}>{step}</li>
+                          ))}
+                        </ul>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                )}
+              </div>
               {msg.timestamp && (
-                  <p className={`text-xs mt-1.5 ${msg.sender === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'} text-right`}>
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </p>
+                <p className={`text-xs mt-1 ${msg.sender === 'user' ? 'text-muted-foreground text-right' : 'text-muted-foreground text-left pl-1'}`}>
+                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </p>
               )}
             </div>
             {msg.sender === "user" && (
