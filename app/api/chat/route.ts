@@ -69,6 +69,54 @@ async function* handleGeminiRequest(apiKey: string, modelId: string, messages: C
   }
 }
 
+// --- Deepseek Handler (OpenAI Compatible) ---
+async function* handleDeepseekRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string): AsyncGenerator<string> {
+  const deepseek = new OpenAI({
+    apiKey: apiKey,
+    baseURL: 'https://api.deepseek.com' 
+  });
+
+  const apiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = messages.map(msg => ({
+    role: msg.role === 'model' ? 'assistant' : msg.role as 'user' | 'assistant' | 'system',
+    content: msg.content,
+  }));
+
+  // Ensure the provided systemPrompt is used, replacing any existing system message.
+  if (systemPrompt) {
+    const systemMessageIndex = apiMessages.findIndex(m => m.role === 'system');
+    if (systemMessageIndex !== -1) {
+      apiMessages[systemMessageIndex].content = systemPrompt;
+    } else {
+      apiMessages.unshift({ role: 'system', content: systemPrompt });
+    }
+  } else {
+    // If no systemPrompt is provided, remove any existing system message from the array
+    const systemMessageIndex = apiMessages.findIndex(m => m.role === 'system');
+    if (systemMessageIndex !== -1) {
+      apiMessages.splice(systemMessageIndex, 1);
+    }
+  }
+  
+  try {
+    const stream = await deepseek.chat.completions.create({
+        model: modelId,
+        messages: apiMessages,
+        stream: true,
+    });
+
+    for await (const chunk of stream) {
+        if (chunk.choices[0]?.delta?.content) {
+        yield chunk.choices[0].delta.content;
+        }
+    }
+  } catch (e: unknown) {
+    console.error("Deepseek API streaming error:", e);
+    const message = e instanceof Error ? e.message : String(e);
+    // Prepend provider name to the error message for clarity on the client-side
+    throw new Error(`Deepseek API error: ${message}`); 
+  }
+}
+
 async function* handleQwenRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string): AsyncGenerator<string> {
     const url = `https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation`;
     const qwenMessages: {role: string, content: string}[] = messages
@@ -260,14 +308,12 @@ export async function POST(req: NextRequest) {
       streamGenerator = handleAnthropicRequest(apiKey, modelId, messages, systemPrompt);
     } else if (modelId.toLowerCase().startsWith('gemini')) {
       streamGenerator = handleGeminiRequest(apiKey, modelId, messages, systemPrompt);
-    } else if (modelId.toLowerCase().startsWith('qwen') || modelId.toLowerCase().startsWith('deepseek')) { // Group Deepseek with Qwen for now if structure is similar
-        // NOTE: Deepseek might need its own handler if API structure differs significantly from Qwen.
-        // Assuming Deepseek uses a similar endpoint structure or it will fail if not handled specifically.
-        if (modelId.toLowerCase().startsWith('deepseek')){
-            console.warn("Deepseek model routed to Qwen handler. Verify API compatibility for streaming.");
-            // TODO: Implement a specific Deepseek streaming handler if its API differs from Qwen's SSE.
-        }
-      streamGenerator = handleQwenRequest(apiKey, modelId, messages, systemPrompt); 
+    } else if (modelId.toLowerCase().startsWith('qwen')) {
+      streamGenerator = handleQwenRequest(apiKey, modelId, messages, systemPrompt);
+    } else if (modelId.toLowerCase().startsWith('deepseek')) {
+      // console.warn("Deepseek model routed to Qwen handler. Verify API compatibility for streaming."); // Original warning
+      // TODO: Implement a specific Deepseek streaming handler if its API differs from Qwen's SSE.
+      streamGenerator = handleDeepseekRequest(apiKey, modelId, messages, systemPrompt);
     } else {
       return NextResponse.json({ error: `Unsupported model provider for ID: ${modelId}` }, { status: 400 });
     }
