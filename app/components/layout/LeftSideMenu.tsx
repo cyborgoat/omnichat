@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu as MenuIcon, X as XIcon, PlusCircle, Settings2, Trash2, Edit3, Eye, EyeOff, Sun, Moon } from "lucide-react";
+import { Menu as MenuIcon, X as XIcon, PlusCircle, Trash2, Edit3, Eye, EyeOff, Sun, Moon } from "lucide-react";
 import { useChatStore, Model } from "@/app/store/chatStore";
 import {
   Select,
@@ -51,7 +51,10 @@ export default function LeftSideMenu() {
     setMounted(true);
   }, []);
 
-  const selectedModel = availableModels.find(m => m.id === selectedModelId);
+  const activeSession = chatSessions.find(s => s.id === activeChatSessionId);
+  const displayModelId = activeSession ? activeSession.modelId : selectedModelId;
+
+  const selectedModel = availableModels.find(m => m.id === displayModelId);
   const currentProvider = selectedModel?.provider;
 
   useMemo(() => {
@@ -187,10 +190,20 @@ export default function LeftSideMenu() {
                         {session.name}
                       </a>
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center pr-1.5">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-sidebar-foreground/70 hover:text-sidebar-foreground" onClick={() => { setEditingSessionId(session.id); setSessionNewName(session.name);}}>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-white dark:hover:text-sidebar-foreground"
+                          onClick={() => { setEditingSessionId(session.id); setSessionNewName(session.name);}}
+                        >
                           <Edit3 size={15} />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive/80" onClick={() => setDeletingSessionId(session.id)}>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 text-destructive hover:bg-destructive/20 hover:text-white dark:hover:text-destructive/80 dark:hover:bg-destructive/20"
+                          onClick={() => setDeletingSessionId(session.id)}
+                        >
                           <Trash2 size={15} />
                         </Button>
                       </div>
@@ -204,7 +217,7 @@ export default function LeftSideMenu() {
                   <label htmlFor="model-select" className="block text-xs font-medium text-sidebar-foreground/70 mb-1 px-1">
                     Select Model
                   </label>
-                  <Select value={selectedModelId || ""} onValueChange={selectModel}>
+                  <Select value={displayModelId || ""} onValueChange={selectModel}>
                     <SelectTrigger id="model-select" className="w-full bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground focus:ring-sidebar-ring focus:border-sidebar-ring">
                       <SelectValue placeholder="Choose a model" />
                     </SelectTrigger>

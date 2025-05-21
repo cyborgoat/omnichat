@@ -7,9 +7,9 @@ import {
   useChatStore,
   Message,
   useActiveChatSession,
-  ChatSession,
-  ApiKeys,
-  Model as StoreModel, // Renamed to avoid conflict with Gemini's Message role 'model'
+  // ChatSession, // Removed unused import
+  // ApiKeys, // Removed unused import
+  // Model as StoreModel, // Removed unused import
 } from "@/app/store/chatStore";
 import { WelcomeScreen } from "../chat/WelcomeScreen";
 
@@ -142,12 +142,12 @@ export default function ChatScreen() {
           const responseText = await response.text(); // Read as text first
           try {
             errorData = JSON.parse(responseText); // Try to parse as JSON
-          } catch (parseError) {
+          } catch { // Removed unused _parseError variable
              // If JSON parsing fails, use the text content directly or a part of it
              errorData.error = responseText.length > 150 ? responseText.substring(0, 150) + "..." : responseText;
              if (!errorData.error) errorData.error = `API request failed with status ${response.status}. No error details provided.`;
           }
-        } catch (e) {
+        } catch { // Removed unused _e variable
           errorData.error = response.statusText || errorData.error;
         }
         throw new Error(errorData.error);
@@ -192,11 +192,12 @@ export default function ChatScreen() {
         store.setMessageStreamingState(currentSessionState.id, botMessageId, false);
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) { // Changed 'any' to 'unknown'
       console.error("Failed to send message or process stream:", error);
-      const errorText = error.message && error.message.startsWith("STREAM_ERROR:") 
-          ? error.message.replace("STREAM_ERROR:", "Streaming Error:") 
-          : (error.message || "An unknown error occurred");
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const errorText = errorMsg.startsWith("STREAM_ERROR:") 
+          ? errorMsg.replace("STREAM_ERROR:", "Streaming Error:") 
+          : (errorMsg || "An unknown error occurred");
       store.updateMessageContent(currentSessionState.id, botMessageId, `Error: ${errorText}`);
       store.setMessageStreamingState(currentSessionState.id, botMessageId, false);
     } finally {

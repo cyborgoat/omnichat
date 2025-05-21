@@ -96,7 +96,7 @@ export const useChatStore = create<ChatState>()(
       availableModels: initialModels,
       selectedModelId: initialModels[0]?.id || null,
       apiKeys: {},
-      globalSystemPrompt: "You are a helpful AI assistant. Respond in Markdown format.", // Updated prompt
+      globalSystemPrompt: "You are a helpful AI assistant. Respond in Markdown format.",
       chatSessions: [],
       activeChatSessionId: null,
       // Initial Transient UI State
@@ -105,7 +105,22 @@ export const useChatStore = create<ChatState>()(
 
       // Implementations
       toggleMenu: () => set((state) => ({ isMenuCollapsed: !state.isMenuCollapsed })),
-      selectModel: (modelId) => set({ selectedModelId: modelId }),
+      selectModel: (modelId) => {
+        set((state) => {
+          const newSelectedModelId = modelId;
+          if (state.activeChatSessionId) {
+            return {
+              selectedModelId: newSelectedModelId,
+              chatSessions: state.chatSessions.map(session => 
+                session.id === state.activeChatSessionId 
+                  ? { ...session, modelId: newSelectedModelId } 
+                  : session
+              ),
+            };
+          }
+          return { selectedModelId: newSelectedModelId };
+        });
+      },
       setApiKey: (provider, key) => set((state) => ({ apiKeys: { ...state.apiKeys, [provider]: key } })),
       setGlobalSystemPrompt: (prompt) => set({ globalSystemPrompt: prompt }),
 
@@ -136,7 +151,18 @@ export const useChatStore = create<ChatState>()(
         return newSessionId;
       },
 
-      setActiveChatSession: (sessionId) => set({ activeChatSessionId: sessionId }),
+      setActiveChatSession: (sessionId) => {
+        set((state) => {
+          const sessionToActivate = state.chatSessions.find(s => s.id === sessionId);
+          if (sessionToActivate) {
+            return {
+              activeChatSessionId: sessionId,
+              selectedModelId: sessionToActivate.modelId, // Sync global select with active session's model
+            };
+          }
+          return { activeChatSessionId: sessionId }; // Fallback, though session should always be found
+        });
+      },
 
       deleteChatSession: (sessionId) => {
         set((state) => {
@@ -225,26 +251,28 @@ export const useChatStore = create<ChatState>()(
       storage: createJSONStorage(() => localStorage as StateStorage), 
       partialize: (state: ChatState): PersistedChatState => {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { isBotThinking, isSendingMessage, ...rest } = state; // Destructure to exclude transient state
-        return rest; // Persist only the defined PersistedChatState parts
+        const { isBotThinking, isSendingMessage, ...rest } = state; 
+        return rest; 
       },
     }
   )
 );
 
+// Hook to get the full active chat session object
 export const useActiveChatSession = () => {
   const activeId = useChatStore(state => state.activeChatSessionId);
   const sessions = useChatStore(state => state.chatSessions);
   return sessions.find(s => s.id === activeId);
 };
 
+// Hook to get models filtered by a specific provider
 export const useModelsByProvider = (provider: string) => {
   const models = useChatStore(state => state.availableModels);
   return models.filter(m => m.provider === provider);
 };
 
-// Simplified subscription to run once after hydration
-if (typeof window !== 'undefined') { // Ensure this only runs on the client
+// Creates an initial session if none exist after hydration.
+if (typeof window !== 'undefined') { 
     useChatStore.persist.onFinishHydration((state: ChatState) => {
         if (state.chatSessions.length === 0) {
             console.log("No chat sessions found after hydration, creating initial session.");
@@ -253,6 +281,7 @@ if (typeof window !== 'undefined') { // Ensure this only runs on the client
     });
 }
 
+// Hook to get the API key for the currently selected model
 export const useCurrentModelApiKey = () => {
     const selectedModelId = useChatStore(state => state.selectedModelId);
     const availableModels = useChatStore(state => state.availableModels);
