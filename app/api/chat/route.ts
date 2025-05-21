@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from '@google/generative-ai';
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, Part, Content } from '@google/generative-ai';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 // We will add Qwen specific imports or helpers later if needed.
@@ -18,20 +18,22 @@ interface ChatRequestBody {
   // providerId?: string; // Could be useful for more direct routing if modelId isn't unique enough
 }
 
-// Helper to map our generic message roles to provider-specific roles if needed
-// For Gemini, 'assistant' is 'model'. 'system' prompts are handled differently.
-function mapMessagesToGeminiFormat(messages: ChatMessageCore[]) {
-    return messages.map(msg => ({
-        role: msg.role === 'assistant' ? 'model' : msg.role as 'user' | 'model',
-        parts: [{ text: msg.content }],
-    }));
+// Helper to map our generic message roles to Gemini's Content format.
+// Gemini expects Content objects with a role ('user' or 'model') and parts (an array of Part objects).
+function mapMessagesToGeminiFormat(messages: ChatMessageCore[]): Content[] {
+    return messages
+        .filter(msg => msg.role === 'user' || msg.role === 'assistant') // Gemini history only takes user/model roles
+        .map(msg => ({
+            role: msg.role === 'assistant' ? 'model' : 'user', // Map 'assistant' to 'model' for Gemini
+            parts: [{ text: msg.content }],
+        } as Content)); // Assert as Content type
 }
 
-async function handleGeminiRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string) {
+async function* handleGeminiRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string): AsyncGenerator<string> {
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
     model: modelId,
-    ...(systemPrompt && { systemInstruction: { role: "system", parts: [{text: systemPrompt}] } }), // Pass system prompt if available
+    ...(systemPrompt && { systemInstruction: { role: "system", parts: [{text: systemPrompt}] } }),
     safetySettings: [
         { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
         { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE },
@@ -40,24 +42,36 @@ async function handleGeminiRequest(apiKey: string, modelId: string, messages: Ch
     ]
   });
 
-  const historyForGemini = mapMessagesToGeminiFormat(messages.filter(m => m.role !== 'system')); 
-  const lastUserMessageContent = historyForGemini.pop()?.parts[0]?.text; 
-
-  if (!lastUserMessageContent) {
-    throw new Error("Last message must be from user and contain content for Gemini chat.");
+  const geminiMessages = mapMessagesToGeminiFormat(messages.filter(m => m.role !== 'system'));
+  
+  // For streaming, generateContentStream is often simpler as it takes the full conversation history directly.
+  // The systemInstruction is handled at the model level.
+  if (geminiMessages.length === 0) {
+      console.warn("Gemini: No user/assistant messages to send after filtering.");
+      // If only a system prompt was provided, systemInstruction handles it.
+      // If no messages at all, this will likely result in no output or an error from the API.
+      // We might need to send a dummy user message if the API requires it even with systemInstruction.
+      // For now, proceed, and the API will decide.
   }
 
-  const chat = model.startChat({
-    history: historyForGemini, 
-  });
-  const result = await chat.sendMessage(lastUserMessageContent);
-  return result.response.text();
+  try {
+    const stream = await model.generateContentStream({ contents: geminiMessages });
+    for await (const chunk of stream.stream) {
+        const text = chunk.text();
+        if (text) {
+            yield text;
+        }
+    }
+  } catch (e: any) {
+      console.error("Gemini streaming error:", e);
+      throw new Error(`Gemini API streaming error: ${e.message}`);
+  }
 }
 
-async function handleQwenRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string) {
+async function* handleQwenRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string): AsyncGenerator<string> {
     const url = `https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation`;
     const qwenMessages: {role: string, content: string}[] = messages
-        .filter(msg => msg.role !== 'model') // Qwen doesn't use 'model' role
+        .filter(msg => msg.role !== 'model') 
         .map(msg => ({ role: msg.role, content: msg.content }));
 
     if (systemPrompt) {
@@ -69,82 +83,157 @@ async function handleQwenRequest(apiKey: string, modelId: string, messages: Chat
     const payload = {
         model: modelId, 
         input: { messages: qwenMessages },
-        parameters: { /* incremental_output: false */ }
+        parameters: { incremental_output: true } // Enable streaming for Qwen
     };
     const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+        headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${apiKey}`,
+            'X-DashScope-SSE': 'enable' // Required for SSE streaming with Qwen
+        },
         body: JSON.stringify(payload),
     });
+
     if (!response.ok) {
         const errorBody = await response.text();
+        console.error(`Qwen API request failed: ${response.status} ${errorBody}`);
         throw new Error(`Qwen API request failed: ${response.status} ${errorBody}`);
     }
-    const result = await response.json();
-    return result.output?.text || result.output?.choices?.[0]?.message?.content || "No text response from Qwen.";
+    
+    if (!response.body) {
+        throw new Error("Qwen response body is null.");
+    }
+
+    // Process SSE stream from Qwen
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        
+        let eolIndex;
+        // Qwen SSE events are separated by double newlines
+        while ((eolIndex = buffer.indexOf('\n\n')) >= 0) { 
+            const eventLines = buffer.substring(0, eolIndex).split('\n');
+            buffer = buffer.substring(eolIndex + 2);
+
+            for (const line of eventLines) {
+                if (line.startsWith("data:")) {
+                    const dataJson = line.substring(5).trim();
+                    try {
+                        const parsedData = JSON.parse(dataJson);
+                        if (parsedData.output && parsedData.output.text) {
+                            yield parsedData.output.text;
+                        }
+                        // According to Dashscope docs, finish_reason can be in the last event's output.choices[0]
+                        if (parsedData.output && parsedData.output.choices && parsedData.output.choices[0] && parsedData.output.choices[0].finish_reason === "stop") {
+                             return; // Stream finished
+                        }
+                        // Also check for top-level finish_reason as seen in some non-streaming examples
+                        if (parsedData.output && parsedData.output.finish_reason === "stop") {
+                            return; // Stream finished
+                        }
+                    } catch (e) {
+                        console.error("Error parsing Qwen SSE event:", e, "Event string:", dataJson);
+                    }
+                }
+            }
+        }
+    }
+    // If loop finishes due to reader.done but buffer might have trailing incomplete data
+    if (buffer.startsWith("data:")) { // Check for any remaining data
+        const dataJson = buffer.substring(5).trim();
+        try {
+            const parsedData = JSON.parse(dataJson);
+            if (parsedData.output && parsedData.output.text) {
+                yield parsedData.output.text;
+            }
+        } catch (e) {
+            console.error("Error parsing Qwen SSE event (final buffer):", e, "Event string:", dataJson);
+        }
+    }
 }
 
 // --- OpenAI Handler ---
-async function handleOpenAIRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string) {
+async function* handleOpenAIRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string): AsyncGenerator<string> {
   const openai = new OpenAI({ apiKey });
 
   const apiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = messages.map(msg => ({
-    role: msg.role === 'model' ? 'assistant' : msg.role as 'user' | 'assistant' | 'system', // OpenAI uses 'assistant'
+    role: msg.role === 'model' ? 'assistant' : msg.role as 'user' | 'assistant' | 'system',
     content: msg.content,
   }));
 
-  if (systemPrompt && !apiMessages.find(m => m.role === 'system')) {
-    apiMessages.unshift({ role: 'system', content: systemPrompt });
+  // Ensure the provided systemPrompt is used, replacing any existing system message.
+  if (systemPrompt) {
+    const systemMessageIndex = apiMessages.findIndex(m => m.role === 'system');
+    if (systemMessageIndex !== -1) {
+      apiMessages[systemMessageIndex].content = systemPrompt;
+    } else {
+      apiMessages.unshift({ role: 'system', content: systemPrompt });
+    }
+  } else {
+    // If no systemPrompt is provided, remove any existing system message from the array
+    // to prevent an old one from being used unintentionally.
+    const systemMessageIndex = apiMessages.findIndex(m => m.role === 'system');
+    if (systemMessageIndex !== -1) {
+      apiMessages.splice(systemMessageIndex, 1);
+    }
   }
+  
+  try {
+    const stream = await openai.chat.completions.create({
+        model: modelId,
+        messages: apiMessages,
+        stream: true,
+    });
 
-  const completion = await openai.chat.completions.create({
-    model: modelId,
-    messages: apiMessages,
-    // stream: false, // for non-streaming
-  });
-  return completion.choices[0]?.message?.content || "No response from OpenAI.";
+    for await (const chunk of stream) {
+        if (chunk.choices[0]?.delta?.content) {
+        yield chunk.choices[0].delta.content;
+        }
+    }
+  } catch (e: any) {
+    console.error("OpenAI streaming error:", e);
+    throw new Error(`OpenAI API streaming error: ${e.message}`);
+  }
 }
 
 // --- Anthropic Handler ---
-async function handleAnthropicRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string) {
+async function* handleAnthropicRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string): AsyncGenerator<string> {
   const anthropic = new Anthropic({ apiKey });
   
-  // Anthropic expects messages alternating user/assistant. System prompt is a top-level param.
   const filteredMessages = messages.filter(msg => msg.role === 'user' || msg.role === 'assistant');
   const apiMessages: Anthropic.Messages.MessageParam[] = filteredMessages.map(msg => ({
-    role: msg.role as 'user' | 'assistant', // Already filtered
+    role: msg.role as 'user' | 'assistant',
     content: msg.content,
   }));
 
-  // Ensure the last message is from the user if it's a conversation, or handle single message case
-  // For simplicity, we assume the message list from client is already in order.
-  // Anthropic API might require the first message to be user if there's more than one.
   if (apiMessages.length > 0 && apiMessages[0].role !== 'user') {
-      // This is a simple fix, but a more robust solution might be needed
-      // depending on how conversation history is constructed and sent from client.
-      console.warn("Anthropic: First message was not from user, prepending a placeholder if needed or this might error.");
-      // Potentially, if history starts with assistant, it might be invalid.
+      console.warn("Anthropic: First message was not from user. This might cause issues.");
   }
-
-  const response = await anthropic.messages.create({
-    model: modelId,
-    max_tokens: 2048, // Example, make configurable later
-    ...(systemPrompt && { system: systemPrompt }),
-    messages: apiMessages,
-    // stream: false, // for non-streaming
-  });
   
-  // Assuming response.content is an array of ContentBlock objects
-  // and we want to concatenate text from TextBlock objects.
-  let responseText = "";
-  if (response.content && Array.isArray(response.content)) {
-    response.content.forEach(block => {
-      if (block.type === 'text') {
-        responseText += block.text;
-      }
+  try {
+    const stream = await anthropic.messages.stream({
+        model: modelId,
+        max_tokens: 2048, 
+        ...(systemPrompt && { system: systemPrompt }),
+        messages: apiMessages,
     });
+
+    for await (const event of stream) {
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+        yield event.delta.text;
+        }
+    }
+  } catch (e: any) {
+    console.error("Anthropic streaming error:", e);
+    throw new Error(`Anthropic API streaming error: ${e.message}`);
   }
-  return responseText || "No text response from Anthropic.";
 }
 
 export async function POST(req: NextRequest) {
@@ -155,37 +244,70 @@ export async function POST(req: NextRequest) {
     if (!modelId) return NextResponse.json({ error: 'Model ID is missing' }, { status: 400 });
     if (!messages || messages.length === 0) return NextResponse.json({ error: 'Messages are missing' }, { status: 400 });
 
-    let responseText: string;
+    let streamGenerator: AsyncGenerator<string>;
     const providerId = modelId.split('-')[0].toLowerCase(); // Basic provider detection
 
-    console.log(`Routing request for model: ${modelId} (Provider detected: ${providerId})`);
+    console.log(`Routing stream request for model: ${modelId} (Provider detected: ${providerId})`);
 
     // TODO: Get provider from store model object for more robust routing.
     // For now, simple string matching based on common model ID prefixes.
     if (modelId.toLowerCase().startsWith('gpt')) {
-      responseText = await handleOpenAIRequest(apiKey, modelId, messages, systemPrompt);
+      streamGenerator = handleOpenAIRequest(apiKey, modelId, messages, systemPrompt);
     } else if (modelId.toLowerCase().startsWith('claude')) {
-      responseText = await handleAnthropicRequest(apiKey, modelId, messages, systemPrompt);
+      streamGenerator = handleAnthropicRequest(apiKey, modelId, messages, systemPrompt);
     } else if (modelId.toLowerCase().startsWith('gemini')) {
-      responseText = await handleGeminiRequest(apiKey, modelId, messages, systemPrompt);
+      streamGenerator = handleGeminiRequest(apiKey, modelId, messages, systemPrompt);
     } else if (modelId.toLowerCase().startsWith('qwen') || modelId.toLowerCase().startsWith('deepseek')) { // Group Deepseek with Qwen for now if structure is similar
         // NOTE: Deepseek might need its own handler if API structure differs significantly from Qwen.
         // Assuming Deepseek uses a similar endpoint structure or it will fail if not handled specifically.
         if (modelId.toLowerCase().startsWith('deepseek')){
-            console.warn("Deepseek model routed to Qwen handler. Verify API compatibility.");
-            // Placeholder - Deepseek may need its own specific URL and payload structure.
-            // For now, it will attempt Qwen logic which will likely fail if Deepseek API is different.
-            // responseText = await handleDeepseekRequest(apiKey, modelId, messages, systemPrompt);
+            console.warn("Deepseek model routed to Qwen handler. Verify API compatibility for streaming.");
+            // TODO: Implement a specific Deepseek streaming handler if its API differs from Qwen's SSE.
         }
-      responseText = await handleQwenRequest(apiKey, modelId, messages, systemPrompt); 
+      streamGenerator = handleQwenRequest(apiKey, modelId, messages, systemPrompt); 
     } else {
       return NextResponse.json({ error: `Unsupported model provider for ID: ${modelId}` }, { status: 400 });
     }
 
-    return NextResponse.json({ response: responseText });
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+
+    // Asynchronously pipe the streamGenerator to the writable side of the TransformStream
+    (async () => {
+      try {
+        for await (const chunk of streamGenerator) {
+          await writer.write(encoder.encode(chunk));
+        }
+      } catch (error: any) {
+        console.error('Error during stream generation piping:', error.message);
+        try {
+            // Signal an error through the stream. Client must be able to parse this.
+            // Using a simple prefix. Consider JSON for structured errors if client can handle it.
+            const errorMessage = `STREAM_ERROR: ${error.message || 'Unknown stream error'}`;
+            await writer.write(encoder.encode(`\n${errorMessage}\n`));
+        } catch (writeError) {
+            console.error("Error writing error to stream:", writeError);
+        }
+      } finally {
+        try {
+            await writer.close();
+        } catch (closeError) {
+            console.error("Error closing stream writer:", closeError);
+        }
+      }
+    })();
+
+    return new NextResponse(readable, {
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8', 
+        'X-Content-Type-Options': 'nosniff',
+        'Cache-Control': 'no-cache', // Ensure no caching for dynamic stream content
+      },
+    });
 
   } catch (error: any) {
-    console.error('Error in /api/chat POST:', error.message, error.stack);
+    console.error('Error in /api/chat POST (pre-stream):', error.message, error.stack);
     return NextResponse.json({ error: error.message || 'An unknown server error occurred' }, { status: 500 });
   }
 } 

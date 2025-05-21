@@ -45,6 +45,14 @@ export default function MessageList({ messages }: MessageListProps) {
                   ? "bg-blue-600 text-white rounded-br-none shadow-blue-200/50 dark:shadow-blue-900/50"
                   : "bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-none shadow-gray-300/50 dark:shadow-gray-900/50"}`}
             >
+              {msg.sender === "bot" && msg.isStreaming && !msg.text && (
+                <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-75"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-150"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-300"></div>
+                  <span className="text-xs">Assistant is typing...</span>
+                </div>
+              )}
               <p className="whitespace-pre-wrap">{msg.text}</p>
               {msg.sender === "bot" && msg.thinkingSteps && msg.thinkingSteps.length > 0 && (
                 <Accordion type="single" collapsible className="w-full mt-2.5 text-xs">

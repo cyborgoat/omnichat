@@ -16,6 +16,7 @@ export interface Message {
   sender: "user" | "bot";
   timestamp: string;
   thinkingSteps?: string[];
+  isStreaming?: boolean; // Added for stream handling
   // We can add more fields like 'metadata' for images or files, or error states
 }
 
@@ -59,6 +60,9 @@ export interface ChatState extends PersistedChatState {
   renameChatSession: (sessionId: string, newName: string) => void;
   updateSessionSystemPrompt: (sessionId: string, prompt: string) => void;
   addMessageToSession: (sessionId: string, message: Message) => void;
+  updateMessageContent: (sessionId: string, messageId: string, newContent: string) => void;
+  appendMessageContent: (sessionId: string, messageId: string, contentChunk: string) => void;
+  setMessageStreamingState: (sessionId: string, messageId: string, isStreaming: boolean) => void;
   setBotThinking: (isThinking: boolean) => void;
   setSendingMessage: (isSending: boolean) => void;
 }
@@ -172,6 +176,51 @@ export const useChatStore = create<ChatState>()(
         }));
       },
       
+      updateMessageContent: (sessionId, messageId, newContent) => {
+        set((state) => ({
+          chatSessions: state.chatSessions.map(s =>
+            s.id === sessionId
+              ? {
+                  ...s,
+                  messages: s.messages.map(m =>
+                    m.id === messageId ? { ...m, text: newContent, isStreaming: false } : m // Also set streaming to false when content is fully updated
+                  ),
+                }
+              : s
+          ),
+        }));
+      },
+
+      appendMessageContent: (sessionId, messageId, contentChunk) => {
+        set((state) => ({
+          chatSessions: state.chatSessions.map(s =>
+            s.id === sessionId
+              ? {
+                  ...s,
+                  messages: s.messages.map(m =>
+                    m.id === messageId ? { ...m, text: m.text + contentChunk, isStreaming: true } : m // Keep isStreaming true while appending
+                  ),
+                }
+              : s
+          ),
+        }));
+      },
+
+      setMessageStreamingState: (sessionId, messageId, isStreaming) => {
+        set((state) => ({
+          chatSessions: state.chatSessions.map(s =>
+            s.id === sessionId
+              ? {
+                  ...s,
+                  messages: s.messages.map(m =>
+                    m.id === messageId ? { ...m, isStreaming } : m
+                  ),
+                }
+              : s
+          ),
+        }));
+      },
+
       setBotThinking: (isThinking) => set({ isBotThinking: isThinking }),
       setSendingMessage: (isSending) => set({ isSendingMessage: isSending }),
     }),

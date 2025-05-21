@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react";
 import MessageList from "../chat/MessageList";
 import ChatInput from "../chat/ChatInput";
-import ThinkingIndicator from "../chat/ThinkingIndicator";
 import {
   useChatStore,
   Message,
@@ -42,7 +41,7 @@ export default function ChatScreen() {
     }
     if (!messageText.trim() && (!files || files.length === 0)) return;
 
-    store.setSendingMessage(true);
+    store.setSendingMessage(true); 
 
     const userMessage: Message = {
       id: crypto.randomUUID(),
@@ -50,55 +49,78 @@ export default function ChatScreen() {
       sender: "user",
       timestamp: new Date().toISOString(),
     };
+    // Add user message to the store FIRST
     store.addMessageToSession(activeSession.id, userMessage);
+
+    // Create a placeholder bot message for streaming AFTER user message is in store
+    const botMessageId = crypto.randomUUID();
+    const initialBotMessage: Message = {
+      id: botMessageId,
+      text: "", 
+      sender: "bot",
+      timestamp: new Date().toISOString(),
+      isStreaming: true,
+    };
+    store.addMessageToSession(activeSession.id, initialBotMessage);
+    store.setBotThinking(true); 
 
     if (files && files.length > 0) {
       console.log("Files uploaded:", files.map(f => f.name));
-      // TODO: Handle file uploads: convert to base64 or upload to a service,
-      // then include in payload for vision models.
-      // For now, we just log them.
+      // TODO: Handle file uploads
     }
     
-    store.setBotThinking(true);
+    // Get the most up-to-date session from the store AFTER adding messages
+    const currentSessionState = useChatStore.getState().chatSessions.find(s => s.id === activeSession.id);
+    if (!currentSessionState) {
+        console.error("Critical: Active session not found in store after adding messages.");
+        store.setBotThinking(false);
+        store.setSendingMessage(false);
+        // Potentially update the bot message with an error
+        store.updateMessageContent(activeSession.id, botMessageId, "Error: Could not find active session data.");
+        store.setMessageStreamingState(activeSession.id, botMessageId, false);
+        return;
+    }
 
-    const currentModel = store.availableModels.find(m => m.id === activeSession.modelId);
+    const currentModel = store.availableModels.find(m => m.id === currentSessionState.modelId);
     if (!currentModel) {
-      console.error("Selected model not found in available models.");
+      const errorText = "Error: Selected model configuration not found. Please try another model.";
+      store.updateMessageContent(currentSessionState.id, botMessageId, errorText);
+      store.setMessageStreamingState(currentSessionState.id, botMessageId, false);
       store.setBotThinking(false);
       store.setSendingMessage(false);
-      // Optionally add an error message to the chat
-      const errorMsg: Message = {
-        id: crypto.randomUUID(),
-        text: "Error: Selected model configuration not found. Please try another model.",
-        sender: "bot",
-        timestamp: new Date().toISOString(),
-      };
-      store.addMessageToSession(activeSession.id, errorMsg);
       return;
     }
 
     const apiKey = store.apiKeys[currentModel.provider];
     if (currentModel.apiKeyRequired && !apiKey) {
-      console.error(`API key for ${currentModel.provider} is missing.`);
+      const errorText = `Error: API key for ${currentModel.provider} is missing. Please set it in the menu.`;
+      store.updateMessageContent(currentSessionState.id, botMessageId, errorText);
+      store.setMessageStreamingState(currentSessionState.id, botMessageId, false);
       store.setBotThinking(false);
       store.setSendingMessage(false);
-      const errorMsg: Message = {
-        id: crypto.randomUUID(),
-        text: `Error: API key for ${currentModel.provider} is missing. Please set it in the menu.`, 
-        sender: "bot",
-        timestamp: new Date().toISOString(),
-      };
-      store.addMessageToSession(activeSession.id, errorMsg);
       return;
     }
 
-    // Prepare messages for API: use only role and content, map to provider requirements in API route
-    const apiMessages = activeSession.messages.map(m => ({ 
-        role: m.sender === 'bot' ? 'assistant' : 'user', // Generic roles for now, API route will adapt
-        content: m.text 
-    }));
-    // Add the new user message to the list for the API call
-    apiMessages.push({ role: 'user', content: userMessage.text });
+    // Construct apiMessages from the latest session state, excluding the placeholder bot message
+    const apiMessages = currentSessionState.messages
+      .filter(m => m.id !== botMessageId) 
+      .map(m => ({ 
+          role: m.sender === 'bot' ? 'assistant' : 'user', 
+          content: m.text 
+      }));
+
+    // Safety check if apiMessages is somehow still empty (e.g. if user message wasn't properly added or filtered)
+    if (apiMessages.length === 0) {
+        console.error("Critical: apiMessages array is empty before sending to API. This should not happen.");
+        const errorText = "Error: Failed to prepare messages for the AI. Please try again.";
+        store.updateMessageContent(currentSessionState.id, botMessageId, errorText);
+        store.setMessageStreamingState(currentSessionState.id, botMessageId, false);
+        store.setBotThinking(false);
+        store.setSendingMessage(false);
+        return;
+    }
+
+    const systemPromptToUse = currentSessionState.systemPrompt || store.globalSystemPrompt;
 
     try {
       const response = await fetch('/api/chat', {
@@ -107,43 +129,80 @@ export default function ChatScreen() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          messages: apiMessages, // Send the current conversation history + new message
-          modelId: activeSession.modelId,
-          apiKey: apiKey, // Pass the API key for the selected model's provider
-          systemPrompt: activeSession.systemPrompt, // Pass the system prompt for the current session
+          messages: apiMessages, 
+          modelId: currentSessionState.modelId,
+          apiKey: apiKey, 
+          systemPrompt: systemPromptToUse, 
         }),
       });
 
-      store.setBotThinking(false);
-
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: "An unknown API error occurred." }));
-        throw new Error(errorData.error || `API request failed with status ${response.status}`);
+        let errorData = { error: `API request failed with status ${response.status}` };
+        try {
+          const responseText = await response.text(); // Read as text first
+          try {
+            errorData = JSON.parse(responseText); // Try to parse as JSON
+          } catch (parseError) {
+             // If JSON parsing fails, use the text content directly or a part of it
+             errorData.error = responseText.length > 150 ? responseText.substring(0, 150) + "..." : responseText;
+             if (!errorData.error) errorData.error = `API request failed with status ${response.status}. No error details provided.`;
+          }
+        } catch (e) {
+          errorData.error = response.statusText || errorData.error;
+        }
+        throw new Error(errorData.error);
       }
 
-      const data = await response.json();
-      const botResponse: Message = {
-        id: crypto.randomUUID(),
-        text: data.response || "No response text from API.",
-        sender: "bot",
-        timestamp: new Date().toISOString(),
-        // thinkingSteps: data.thinkingSteps || [], // If API provided thinking steps
-      };
-      store.addMessageToSession(activeSession.id, botResponse);
+      if (!response.body) {
+        throw new Error("Response body is null");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      
+      // let accumulatedText = ""; // Not strictly needed if appending directly
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          store.setMessageStreamingState(currentSessionState.id, botMessageId, false);
+          break;
+        }
+        const chunk = decoder.decode(value, { stream: true });
+        // Check for special stream error signal
+        if (chunk.includes("STREAM_ERROR:")) {
+            const errorMessage = chunk.split("STREAM_ERROR:")[1]?.trim() || "Unknown streaming error.";
+            console.error("Streaming error from API route:", errorMessage);
+            store.updateMessageContent(currentSessionState.id, botMessageId, `Error: ${errorMessage}`);
+            store.setMessageStreamingState(currentSessionState.id, botMessageId, false);
+            break; 
+        }
+        // accumulatedText += chunk; // Not needed if appending directly
+        store.appendMessageContent(currentSessionState.id, botMessageId, chunk);
+      }
+      const remaining = decoder.decode(); 
+      if (remaining) {
+        // accumulatedText += remaining; // Not needed
+        store.appendMessageContent(currentSessionState.id, botMessageId, remaining);
+      }
+      
+      const finalSessionCheck = useChatStore.getState().chatSessions.find(s => s.id === currentSessionState.id);
+      const finalBotMsgCheck = finalSessionCheck?.messages.find(m => m.id === botMessageId);
+      if(finalBotMsgCheck?.isStreaming){
+        store.setMessageStreamingState(currentSessionState.id, botMessageId, false);
+      }
 
     } catch (error: any) {
-      console.error("Failed to send message:", error);
-      store.setBotThinking(false); 
-      const errorMsg: Message = {
-        id: crypto.randomUUID(),
-        text: `Error: ${error.message}`,
-        sender: "bot",
-        timestamp: new Date().toISOString(),
-      };
-      store.addMessageToSession(activeSession.id, errorMsg);
+      console.error("Failed to send message or process stream:", error);
+      const errorText = error.message && error.message.startsWith("STREAM_ERROR:") 
+          ? error.message.replace("STREAM_ERROR:", "Streaming Error:") 
+          : (error.message || "An unknown error occurred");
+      store.updateMessageContent(currentSessionState.id, botMessageId, `Error: ${errorText}`);
+      store.setMessageStreamingState(currentSessionState.id, botMessageId, false);
+    } finally {
+      store.setBotThinking(false);
+      store.setSendingMessage(false);
     }
-    
-    store.setSendingMessage(false);
   };
 
   if (!activeSession) {
@@ -154,7 +213,6 @@ export default function ChatScreen() {
     <div className="flex-1 flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
       <div className="flex-grow overflow-y-auto p-4 no-scrollbar">
         <MessageList messages={activeSession.messages} />
-        {store.isBotThinking && <ThinkingIndicator />} 
         <div ref={messagesEndRef} />
       </div>
       <ChatInput onSendMessage={handleSendMessage} /> {/* isSending prop removed as ChatInput gets it from store */}
