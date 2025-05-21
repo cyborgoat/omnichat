@@ -107,18 +107,18 @@ export default function LeftSideMenu() {
       initial={false}
       animate={isMenuCollapsed ? "collapsed" : "expanded"}
       variants={menuVariants}
-      className="bg-gray-900 text-gray-200 p-3 h-full relative flex flex-col shadow-lg print:hidden"
+      className="bg-sidebar text-sidebar-foreground p-3 h-full relative flex flex-col shadow-lg print:hidden"
       transition={{ duration: 0.3, ease: "easeInOut" }}
     >
       <div className="flex items-center justify-between mb-1 absolute top-3 left-3 right-3 z-20">
-          {!isMenuCollapsed && <h1 className="text-xl font-semibold pl-1 text-white">Omnichat</h1>}
+          {!isMenuCollapsed && <h1 className="text-xl font-semibold pl-1 text-sidebar-foreground">Omnichat</h1>}
           <div className="flex items-center ml-auto">
             {!isMenuCollapsed && mounted && (
                 <Button 
                     variant="ghost" 
                     size="icon" 
                     onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
-                    className="hover:bg-gray-700/50 text-gray-400 hover:text-white mr-1 h-9 w-9"
+                    className="hover:bg-sidebar-accent text-sidebar-foreground/80 hover:text-sidebar-foreground mr-1 h-9 w-9"
                     aria-label="Toggle theme"
                 >
                     {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
@@ -128,7 +128,7 @@ export default function LeftSideMenu() {
               variant="ghost"
               size="icon"
               onClick={toggleMenu}
-              className="hover:bg-gray-700/50 text-gray-400 hover:text-white ml-auto"
+              className="hover:bg-sidebar-accent text-sidebar-foreground/80 hover:text-sidebar-foreground ml-auto"
               aria-label={isMenuCollapsed ? "Open menu" : "Close menu"}
             >
               {isMenuCollapsed ? <MenuIcon size={24} /> : <XIcon size={24} />}
@@ -153,21 +153,21 @@ export default function LeftSideMenu() {
               className="flex flex-col flex-grow justify-between h-full overflow-y-auto no-scrollbar pr-1"
             >
               <div className="flex-shrink-0">
-                <Button onClick={() => createNewChatSession()} className="w-full mb-3 bg-indigo-600 hover:bg-indigo-700 text-white">
+                <Button onClick={() => createNewChatSession()} className="w-full mb-3 bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90">
                   <PlusCircle size={18} className="mr-2" /> New Chat
                 </Button>
-                <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 px-1">Chats</h2>
+                <h2 className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider mb-1.5 px-1">Chats</h2>
                 <nav className="space-y-0.5 flex-grow overflow-y-auto max-h-[calc(100vh-450px)] no-scrollbar">
                   {chatSessions.length === 0 && (
-                    <p className="text-sm text-gray-500 p-2">No chats yet.</p>
+                    <p className="text-sm text-sidebar-foreground/60 p-2">No chats yet.</p>
                   )}
                   {chatSessions.slice().reverse().map((session) => (
                     <div 
                       key={session.id} 
                       className={`group flex items-center justify-between rounded-md transition-colors duration-150
                         ${activeChatSessionId === session.id
-                          ? "bg-gray-700/60"
-                          : "hover:bg-gray-700/50"
+                          ? "bg-sidebar-accent/60"
+                          : "hover:bg-sidebar-accent/40"
                         }
                       `}
                     >
@@ -179,18 +179,18 @@ export default function LeftSideMenu() {
                         }}
                         className={`block p-2 text-sm truncate flex-grow rounded-md
                           ${activeChatSessionId === session.id
-                            ? "text-white font-medium"
-                            : "text-gray-300 group-hover:text-white"
+                            ? "text-sidebar-foreground font-medium"
+                            : "text-sidebar-foreground/80 group-hover:text-sidebar-foreground"
                           }`}
                         title={session.name}
                       >
                         {session.name}
                       </a>
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center pr-1.5">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-gray-400 hover:text-white" onClick={() => { setEditingSessionId(session.id); setSessionNewName(session.name);}}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-sidebar-foreground/70 hover:text-sidebar-foreground" onClick={() => { setEditingSessionId(session.id); setSessionNewName(session.name);}}>
                           <Edit3 size={15} />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-400" onClick={() => setDeletingSessionId(session.id)}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive/80" onClick={() => setDeletingSessionId(session.id)}>
                           <Trash2 size={15} />
                         </Button>
                       </div>
@@ -199,21 +199,21 @@ export default function LeftSideMenu() {
                 </nav>
               </div>
 
-              <div className="mt-auto pt-3 border-t border-gray-700/70 flex-shrink-0">
+              <div className="mt-auto pt-3 border-t border-sidebar-border/70 flex-shrink-0">
                 <div className="mb-3">
-                  <label htmlFor="model-select" className="block text-xs font-medium text-gray-500 mb-1 px-1">
+                  <label htmlFor="model-select" className="block text-xs font-medium text-sidebar-foreground/70 mb-1 px-1">
                     Select Model
                   </label>
                   <Select value={selectedModelId || ""} onValueChange={selectModel}>
-                    <SelectTrigger id="model-select" className="w-full bg-gray-800 border-gray-700 text-gray-200 focus:ring-indigo-500 focus:border-indigo-500">
+                    <SelectTrigger id="model-select" className="w-full bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground focus:ring-sidebar-ring focus:border-sidebar-ring">
                       <SelectValue placeholder="Choose a model" />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-800 text-gray-200 border-gray-700 max-h-60 overflow-y-auto">
+                    <SelectContent className="bg-sidebar text-sidebar-foreground border-sidebar-border max-h-60 overflow-y-auto">
                       {Object.entries(groupedModels).map(([providerName, modelsInGroup]) => (
                         <SelectGroup key={providerName}>
-                          <SelectLabel className="text-gray-500">{providerName}</SelectLabel>
+                          <SelectLabel className="text-sidebar-foreground/70">{providerName}</SelectLabel>
                           {modelsInGroup.map((model) => (
-                            <SelectItem key={model.id} value={model.id} className="hover:bg-gray-700 focus:bg-gray-700 data-[highlighted]:bg-gray-700 data-[state=checked]:bg-gray-700/80">
+                            <SelectItem key={model.id} value={model.id} className="hover:bg-sidebar-accent focus:bg-sidebar-accent data-[highlighted]:bg-sidebar-accent data-[state=checked]:bg-sidebar-accent/80">
                               {model.name}
                             </SelectItem>
                           ))}
@@ -225,7 +225,7 @@ export default function LeftSideMenu() {
                 
                 {selectedModel?.apiKeyRequired && (
                   <div className="mb-3">
-                    <label htmlFor="api-key-input" className="block text-xs font-medium text-gray-500 mb-1 px-1">
+                    <label htmlFor="api-key-input" className="block text-xs font-medium text-sidebar-foreground/70 mb-1 px-1">
                       {selectedModel.provider} API Key
                     </label>
                     <div className="flex space-x-1.5 items-center">
@@ -235,18 +235,18 @@ export default function LeftSideMenu() {
                         placeholder={`Enter ${selectedModel.provider} API key`}
                         value={currentProviderApiKey}
                         onChange={handleApiKeyChange}
-                        className="w-full bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/50 focus:ring-sidebar-ring focus:border-sidebar-ring"
                       />
                       <Button 
                         variant="ghost" 
                         size="icon" 
                         onClick={() => setIsApiKeyVisible(!isApiKeyVisible)} 
-                        className="text-gray-400 hover:text-white h-9 w-9 flex-shrink-0"
+                        className="text-sidebar-foreground/70 hover:text-sidebar-foreground h-9 w-9 flex-shrink-0"
                         aria-label={isApiKeyVisible ? "Hide API key" : "Show API key"}
                       >
                         {isApiKeyVisible ? <EyeOff size={18} /> : <Eye size={18} />}
                       </Button>
-                      <Button onClick={handleApiKeySave} variant="secondary" size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white h-9">
+                      <Button onClick={handleApiKeySave} variant="secondary" size="sm" className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 h-9">
                         Save
                       </Button>
                     </div>
@@ -254,7 +254,7 @@ export default function LeftSideMenu() {
                 )}
 
                 <div>
-                  <label htmlFor="system-prompt-input" className="block text-xs font-medium text-gray-500 mb-1 px-1">
+                  <label htmlFor="system-prompt-input" className="block text-xs font-medium text-sidebar-foreground/70 mb-1 px-1">
                     Global System Prompt
                   </label>
                   <Textarea
@@ -262,7 +262,7 @@ export default function LeftSideMenu() {
                     placeholder="Set a global system prompt..."
                     value={globalSystemPrompt}
                     onChange={(e) => setGlobalSystemPrompt(e.target.value)}
-                    className="w-full min-h-[60px] bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500 no-scrollbar"
+                    className="w-full min-h-[60px] bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/50 focus:ring-sidebar-ring focus:border-sidebar-ring no-scrollbar"
                     rows={3}
                   />
                 </div>
@@ -273,36 +273,36 @@ export default function LeftSideMenu() {
       </motion.div>
       
       <Dialog open={!!editingSessionId} onOpenChange={(isOpen) => !isOpen && setEditingSessionId(null)}>
-        <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700/80 text-gray-200">
+        <DialogContent className="sm:max-w-[425px] bg-sidebar border-sidebar-border text-sidebar-foreground">
           <DialogHeader>
-            <DialogTitle className="text-white">Rename Chat Session</DialogTitle>
+            <DialogTitle className="text-sidebar-foreground">Rename Chat Session</DialogTitle>
           </DialogHeader>
           <Input 
             value={sessionNewName} 
             onChange={(e) => setSessionNewName(e.target.value)} 
             placeholder="Enter new session name"
-            className="bg-gray-800 border-gray-700 text-gray-200 placeholder-gray-500 focus:ring-indigo-500 focus:border-indigo-500 my-3"
+            className="bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/50 focus:ring-sidebar-ring focus:border-sidebar-ring my-3"
           />
           <DialogFooter>
             <DialogClose asChild>
-                <Button type="button" variant="ghost" className="hover:bg-gray-700/50 text-gray-300 hover:text-white">Cancel</Button>
+                <Button type="button" variant="ghost" className="hover:bg-sidebar-accent/50 text-sidebar-foreground/80 hover:text-sidebar-foreground">Cancel</Button>
             </DialogClose>
-            <Button type="button" onClick={handleRenameSession} className="bg-indigo-600 hover:bg-indigo-700 text-white">Rename</Button>
+            <Button type="button" onClick={handleRenameSession} className="bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90">Rename</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!deletingSessionId} onOpenChange={(isOpen) => !isOpen && setDeletingSessionId(null)}>
-        <DialogContent className="sm:max-w-[425px] bg-gray-900 border-gray-700/80 text-gray-200">
+        <DialogContent className="sm:max-w-[425px] bg-sidebar border-sidebar-border text-sidebar-foreground">
           <DialogHeader>
-            <DialogTitle className="text-red-500">Delete Chat Session</DialogTitle>
+            <DialogTitle className="text-destructive">Delete Chat Session</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-gray-300 py-3">Are you sure you want to delete &quot;{chatSessions.find(s => s.id === deletingSessionId)?.name || 'this chat'}&quot;?</p>
+          <p className="text-sm text-sidebar-foreground/80 py-3">Are you sure you want to delete &quot;{chatSessions.find(s => s.id === deletingSessionId)?.name || 'this chat'}&quot;?</p>
           <DialogFooter>
             <DialogClose asChild>
-                <Button type="button" variant="ghost" className="hover:bg-gray-700/50 text-gray-300 hover:text-white">Cancel</Button>
+                <Button type="button" variant="ghost" className="hover:bg-sidebar-accent/50 text-sidebar-foreground/80 hover:text-sidebar-foreground">Cancel</Button>
             </DialogClose>
-            <Button type="button" onClick={handleDeleteSession} className="bg-red-600 hover:bg-red-700 text-white">Delete</Button>
+            <Button type="button" onClick={handleDeleteSession} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

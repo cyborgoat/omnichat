@@ -95,23 +95,23 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
   const acceptedFileTypes = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_TEXT_TYPES].join(",");
 
   return (
-    <div className="p-3 md:p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow- ऊपर">
+    <div className="p-3 md:p-4 border-t border-border bg-card text-card-foreground shadow-up">
       {selectedFiles.length > 0 && (
-        <div className="mb-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+        <div className="mb-3 p-3 border border-border rounded-lg bg-muted">
           <div className="flex flex-wrap gap-3">
             {selectedFiles.map((sf) => (
-              <div key={sf.id} className="relative group w-20 h-20 md:w-24 md:h-24 border dark:border-gray-600 rounded-md overflow-hidden shadow-sm flex flex-col items-center justify-center bg-white dark:bg-gray-600">
+              <div key={sf.id} className="relative group w-20 h-20 md:w-24 md:h-24 border border-border rounded-md overflow-hidden shadow-sm flex flex-col items-center justify-center bg-background">
                 {sf.previewUrl ? (
                   <img src={sf.previewUrl} alt={sf.file.name} className="w-full h-full object-contain" /> // Changed to object-contain
                 ) : (
-                  <div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-300 p-1 text-center">
+                  <div className="flex flex-col items-center justify-center text-muted-foreground p-1 text-center">
                     <FileText size={24} className="md:size-32" />
                     <span className="text-xs mt-1 truncate w-full px-1">{sf.file.name}</span>
                   </div>
                 )}
                 <button 
                   onClick={() => removeFile(sf.id)} 
-                  className="absolute top-0.5 right-0.5 bg-red-600 hover:bg-red-700 text-white rounded-full p-px opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
+                  className="absolute top-0.5 right-0.5 bg-destructive hover:bg-destructive/90 text-destructive-foreground rounded-full p-px opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100"
                   aria-label="Remove file"
                 >
                   <XCircle size={16} />
@@ -120,17 +120,17 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
             ))}
           </div>
           {selectedFiles.length >= MAX_TOTAL_FILES && (
-            <p className="text-xs text-red-500 mt-2">Maximum {MAX_TOTAL_FILES} files allowed.</p>
+            <p className="text-xs text-destructive mt-2">Maximum {MAX_TOTAL_FILES} files allowed.</p>
           )}
         </div>
       )}
       <div className="flex items-center space-x-2">
         <label htmlFor="file-upload" 
-          className={`cursor-pointer p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 
+          className={`cursor-pointer p-2 rounded-full hover:bg-muted 
           ${selectedFiles.length >= MAX_TOTAL_FILES ? 'opacity-50 cursor-not-allowed' : ''}
           ${isSendingMessage ? 'opacity-50 cursor-not-allowed' : ''}`}
         >
-          <Paperclip size={20} className="text-gray-500 dark:text-gray-400" />
+          <Paperclip size={20} className="text-muted-foreground" />
           <input 
             id="file-upload" 
             type="file" 
@@ -153,14 +153,14 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
             }
           }}
           disabled={isSendingMessage}
-          className="flex-1 bg-gray-50 dark:bg-gray-700 border-gray-300 dark:border-gray-600 focus:ring-indigo-500 focus:border-indigo-500 dark:text-white dark:placeholder-gray-400 rounded-full px-4 py-2"
+          className="flex-1 bg-muted border-border focus:ring-primary focus:border-primary text-foreground placeholder-muted-foreground rounded-full px-4 py-2"
         />
-        <Button onClick={handleSend} disabled={isSendingMessage || (!inputText.trim() && selectedFiles.length === 0)} className="rounded-full bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 aspect-square">
+        <Button onClick={handleSend} disabled={isSendingMessage || (!inputText.trim() && selectedFiles.length === 0)} className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 aspect-square">
           {isSendingMessage ? (
             <motion.div 
               animate={{ rotate: 360 }} 
               transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} 
-              className="w-5 h-5 border-2 border-white border-t-transparent rounded-full" 
+              className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full" 
             />
           ) : <Send size={20} />}
           <span className="sr-only">{isSendingMessage ? "Sending" : "Send"}</span>

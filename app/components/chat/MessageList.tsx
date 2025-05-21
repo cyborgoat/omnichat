@@ -17,13 +17,14 @@ interface MessageListProps {
   messages: Message[];
 }
 
-// Reverting to a simpler props type for CodeBlock to avoid complex linter errors.
-// The essential functionality is in how SyntaxHighlighter is called.
+// Using the original type but with eslint disable comments
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface CodeBlockProps {
   node?: any; 
   inline?: boolean;
   className?: string;
   children?: React.ReactNode;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   [key: string]: any; 
 }
 
@@ -56,8 +57,8 @@ export default function MessageList({ messages }: MessageListProps) {
   if (messages.length === 0) {
     return (
       <div className="flex-grow flex flex-col items-center justify-center text-center p-4">
-        <BotMessageSquare size={48} className="text-gray-400 dark:text-gray-500 mb-4" />
-        <p className="text-gray-500 dark:text-gray-400">
+        <BotMessageSquare size={48} className="text-muted-foreground mb-4" />
+        <p className="text-muted-foreground">
           No messages yet. Send a message to start the conversation!
         </p>
       </div>
@@ -77,19 +78,19 @@ export default function MessageList({ messages }: MessageListProps) {
             className={`flex items-end space-x-2.5 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
           >
             {msg.sender === "bot" && (
-              <BotMessageSquare size={28} className="text-indigo-500 mb-1 flex-shrink-0 self-start mt-1" />
+              <BotMessageSquare size={28} className="text-primary mb-1 flex-shrink-0 self-start mt-1" />
             )}
             <div
               className={`max-w-xl lg:max-w-3xl xl:max-w-4xl px-4 py-3 rounded-xl shadow-md 
                 ${msg.sender === "user"
-                  ? "bg-blue-600 text-white rounded-br-none shadow-blue-200/50 dark:shadow-blue-900/50 not-prose" 
-                  : "bg-white dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-none shadow-gray-300/50 dark:shadow-gray-900/50 prose-chat-message dark:prose-invert"}`}
+                  ? "bg-primary text-primary-foreground rounded-br-none shadow-primary/20 not-prose" 
+                  : "bg-card text-card-foreground rounded-bl-none shadow-muted/20 prose-chat-message"}`}
             >
               {msg.sender === "bot" && msg.isStreaming && !msg.text && (
-                <div className="flex items-center space-x-2 text-gray-500 dark:text-gray-400">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-75"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-150"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse delay-300"></div>
+                <div className="flex items-center space-x-2 text-muted-foreground">
+                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-75"></div>
+                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-150"></div>
+                  <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-300"></div>
                   <span className="text-xs">Assistant is typing...</span>
                 </div>
               )}
@@ -106,12 +107,12 @@ export default function MessageList({ messages }: MessageListProps) {
               )}
               {msg.sender === "bot" && msg.thinkingSteps && msg.thinkingSteps.length > 0 && (
                 <Accordion type="single" collapsible className="w-full mt-2.5 text-xs">
-                  <AccordionItem value={`thinking-${msg.id}`} className="border-t border-gray-300 dark:border-gray-600 pt-1.5">
-                    <AccordionTrigger className="text-gray-600 dark:text-gray-400 hover:no-underline py-1.5 px-0 text-left">
+                  <AccordionItem value={`thinking-${msg.id}`} className="border-t border-border pt-1.5">
+                    <AccordionTrigger className="text-muted-foreground hover:no-underline py-1.5 px-0 text-left">
                       Show Reasoning ({msg.thinkingSteps.length} steps)
                     </AccordionTrigger>
-                    <AccordionContent className="bg-gray-50 dark:bg-gray-600/50 p-2.5 rounded-md mt-1.5">
-                      <ul className="list-decimal list-inside space-y-1.5 text-gray-700 dark:text-gray-300">
+                    <AccordionContent className="bg-muted p-2.5 rounded-md mt-1.5">
+                      <ul className="list-decimal list-inside space-y-1.5 text-muted-foreground">
                         {msg.thinkingSteps.map((step, idx) => (
                           <li key={idx}>{step}</li>
                         ))}
@@ -121,13 +122,13 @@ export default function MessageList({ messages }: MessageListProps) {
                 </Accordion>
               )}
               {msg.timestamp && (
-                  <p className={`text-xs mt-1.5 ${msg.sender === 'user' ? 'text-blue-200' : 'text-gray-400 dark:text-gray-500'} text-right`}>
+                  <p className={`text-xs mt-1.5 ${msg.sender === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'} text-right`}>
                       {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
               )}
             </div>
             {msg.sender === "user" && (
-              <User size={28} className="text-blue-500 mb-1 flex-shrink-0 self-start mt-1" />
+              <User size={28} className="text-primary mb-1 flex-shrink-0 self-start mt-1" />
             )}
           </motion.div>
         ))}

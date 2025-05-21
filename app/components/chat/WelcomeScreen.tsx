@@ -15,18 +15,18 @@ export function WelcomeScreen() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center h-full bg-gray-50 dark:bg-gray-900 p-8 text-center">
-      <MessageSquarePlus size={64} className="text-indigo-500 mb-6" />
-      <h1 className="text-3xl font-semibold text-gray-800 dark:text-gray-100 mb-3">
+    <div className="flex-1 flex flex-col items-center justify-center h-full bg-background p-8 text-center">
+      <MessageSquarePlus size={64} className="text-primary mb-6" />
+      <h1 className="text-3xl font-semibold text-foreground mb-3">
         Welcome to Omnichat
       </h1>
-      <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md">
+      <p className="text-muted-foreground mb-8 max-w-md">
         Select a model and start a new conversation from the left panel, or simply click below to begin.
       </p>
-      <Button onClick={handleStartChat} size="lg" className="bg-indigo-600 hover:bg-indigo-700">
+      <Button onClick={handleStartChat} size="lg" className="bg-primary text-primary-foreground hover:bg-primary/90">
         Start New Chat
       </Button>
-      <p className="text-xs text-gray-400 dark:text-gray-500 mt-12">
+      <p className="text-xs text-muted-foreground/70 mt-12">
         Tip: You can manage your API keys and select different AI models from the menu.
       </p>
     </div>

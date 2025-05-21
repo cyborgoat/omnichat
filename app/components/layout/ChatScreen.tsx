@@ -210,7 +210,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="flex-1 flex flex-col h-screen bg-background text-foreground">
       <div className="flex-grow overflow-y-auto p-4 no-scrollbar">
         <MessageList messages={activeSession.messages} />
         <div ref={messagesEndRef} />
