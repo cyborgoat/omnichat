@@ -2,7 +2,7 @@
 
 import React, {useMemo, useState} from "react";
 import {AnimatePresence, motion} from "framer-motion";
-import {Edit3, Eye, EyeOff, Menu as MenuIcon, Moon, PlusCircle, Sun, Trash2, X as XIcon,} from "lucide-react";
+import {Edit3, Eye, EyeOff, Menu as MenuIcon, Moon, PlusCircle, Sun, Trash2, X as XIcon, Eraser} from "lucide-react";
 import {Model, useChatStore} from "@/app/store/chatStore";
 import {
   Select,
@@ -44,6 +44,7 @@ export default function LeftSideMenu() {
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(
     null
   );
+  const [clearingAllSessions, setClearingAllSessions] = useState(false);
   const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -106,6 +107,11 @@ export default function LeftSideMenu() {
       deleteChatSession(deletingSessionId);
       setDeletingSessionId(null);
     }
+  };
+
+  const handleClearAllSessions = () => {
+    chatSessions.forEach(session => deleteChatSession(session.id));
+    setClearingAllSessions(false);
   };
 
   return (
@@ -173,9 +179,21 @@ export default function LeftSideMenu() {
                 >
                   <PlusCircle size={18} className="mr-2" /> New Chat
                 </Button>
-                <h2 className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider mb-1.5 px-1">
-                  Chats
-                </h2>
+                <div className="group flex items-center justify-between mb-1.5 px-1">
+                  <h2 className="text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider">
+                    Chats
+                  </h2>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setClearingAllSessions(true)}
+                    className="h-6 px-1.5 text-xs text-sidebar-foreground/50 opacity-80 group-hover:opacity-100 hover:text-destructive dark:hover:text-destructive/80 hover:bg-destructive/10"
+                    aria-label="Clear all sessions"
+                  >
+                    <Eraser size={12} className="mr-1" />
+                    Clear all
+                  </Button>
+                </div>
                 <nav className="space-y-0.5 flex-grow overflow-y-auto max-h-[calc(100vh-450px)] no-scrollbar">
                   {chatSessions.length === 0 && (
                     <p className="text-sm text-sidebar-foreground/60 p-2">
@@ -414,6 +432,40 @@ export default function LeftSideMenu() {
               className="bg-destructive hover:bg-destructive/90 text-white dark:text-black"
             >
               Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={clearingAllSessions}
+        onOpenChange={(isOpen) => !isOpen && setClearingAllSessions(false)}
+      >
+        <DialogContent className="sm:max-w-[425px] bg-sidebar border-sidebar-border text-sidebar-foreground">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">
+              Clear All Chat Sessions
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-sidebar-foreground/80 py-3">
+            Are you sure you want to delete all chat sessions? This action cannot be undone.
+          </p>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                className="hover:bg-sidebar-accent/50 text-sidebar-foreground/80 hover:text-sidebar-foreground"
+              >
+                Cancel
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              onClick={handleClearAllSessions}
+              className="bg-destructive hover:bg-destructive/90 text-white dark:text-black"
+            >
+              Clear All
             </Button>
           </DialogFooter>
         </DialogContent>
