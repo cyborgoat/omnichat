@@ -5,13 +5,13 @@ import {AnimatePresence, motion} from "framer-motion";
 import {Edit3, Eye, EyeOff, Menu as MenuIcon, Moon, PlusCircle, Sun, Trash2, X as XIcon,} from "lucide-react";
 import {Model, useChatStore} from "@/app/store/chatStore";
 import {
-    Select,
-    SelectContent,
-    SelectGroup,
-    SelectItem,
-    SelectLabel,
-    SelectTrigger,
-    SelectValue,
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import {Input} from "@/components/ui/input";
 import {Button} from "@/components/ui/button";
