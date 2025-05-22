@@ -429,7 +429,7 @@ export default function LeftSideMenu() {
             <Button
               type="button"
               onClick={handleDeleteSession}
-              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              className="bg-destructive hover:bg-destructive/90 text-white dark:text-black"
             >
               Delete
             </Button>
