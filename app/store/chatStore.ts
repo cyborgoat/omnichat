@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid';
 import { create } from 'zustand';
 import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 
@@ -125,7 +126,7 @@ export const useChatStore = create<ChatState>()(
       setGlobalSystemPrompt: (prompt) => set({ globalSystemPrompt: prompt }),
 
       createNewChatSession: (modelIdToUse, name) => {
-        const newSessionId = crypto.randomUUID();
+        const newSessionId = uuidv4(); // Use uuidv4 to generate a unique ID
         const currentSelectedModelId = get().selectedModelId;
         const modelToUse = modelIdToUse || currentSelectedModelId || initialModels[0]?.id;
         
