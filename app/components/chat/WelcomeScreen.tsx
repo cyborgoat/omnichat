@@ -1,8 +1,8 @@
 "use client";
 
-import { useChatStore } from "@/app/store/chatStore";
-import { Button } from "@/components/ui/button";
-import { MessageSquarePlus } from "lucide-react";
+import {useChatStore} from "@/app/store/chatStore";
+import {Button} from "@/components/ui/button";
+import {MessageSquarePlus} from "lucide-react";
 
 export function WelcomeScreen() {
   const createNewChatSession = useChatStore((state) => state.createNewChatSession);

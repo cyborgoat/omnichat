@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, Content } from '@google/generative-ai';
+import {NextRequest, NextResponse} from 'next/server';
+import {Content, GoogleGenerativeAI, HarmBlockThreshold, HarmCategory} from '@google/generative-ai';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
+
 // We will add Qwen specific imports or helpers later if needed.
 
 interface ChatMessageCore {

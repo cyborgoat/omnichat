@@ -1,41 +1,23 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, {useMemo, useState} from "react";
+import {AnimatePresence, motion} from "framer-motion";
+import {Edit3, Eye, EyeOff, Menu as MenuIcon, Moon, PlusCircle, Sun, Trash2, X as XIcon,} from "lucide-react";
+import {Model, useChatStore} from "@/app/store/chatStore";
 import {
-  Menu as MenuIcon,
-  X as XIcon,
-  PlusCircle,
-  Trash2,
-  Edit3,
-  Eye,
-  EyeOff,
-  Sun,
-  Moon,
-} from "lucide-react";
-import { useChatStore, Model } from "@/app/store/chatStore";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectGroup,
+    SelectItem,
+    SelectLabel,
+    SelectTrigger,
+    SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogClose,
-} from "@/components/ui/dialog";
-import { useTheme } from "next-themes";
-import React from "react";
+import {Input} from "@/components/ui/input";
+import {Button} from "@/components/ui/button";
+import {Textarea} from "@/components/ui/textarea";
+import {Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
+import {useTheme} from "next-themes";
 
 export default function LeftSideMenu() {
   const {

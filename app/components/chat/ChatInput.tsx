@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Paperclip, Send, XCircle, FileText } from "lucide-react";
-import { motion } from "framer-motion";
-import { useChatStore } from "@/app/store/chatStore"; // Import useChatStore
+import {useEffect, useState} from "react";
+import {Input} from "@/components/ui/input";
+import {Button} from "@/components/ui/button";
+import {FileText, Paperclip, Send, XCircle} from "lucide-react";
+import {motion} from "framer-motion";
+import {useChatStore} from "@/app/store/chatStore"; // Import useChatStore
 
 // Define allowed file types
 const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];

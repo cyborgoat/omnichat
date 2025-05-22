@@ -1,18 +1,11 @@
 "use client"; // Required for useState and event handlers
 
-import { v4 as uuidv4 } from "uuid";
-import { useEffect, useRef } from "react";
+import {v4 as uuidv4} from "uuid";
+import {useEffect, useRef} from "react";
 import MessageList from "../chat/MessageList";
 import ChatInput from "../chat/ChatInput";
-import {
-  useChatStore,
-  Message,
-  useActiveChatSession,
-  // ChatSession, // Removed unused import
-  // ApiKeys, // Removed unused import
-  // Model as StoreModel, // Removed unused import
-} from "@/app/store/chatStore";
-import { WelcomeScreen } from "../chat/WelcomeScreen";
+import {Message, useActiveChatSession, useChatStore,} from "@/app/store/chatStore";
+import {WelcomeScreen} from "../chat/WelcomeScreen";
 
 export default function ChatScreen() {
   const store = useChatStore(); // Get the whole store for easier access to multiple states/actions

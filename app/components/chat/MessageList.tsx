@@ -1,20 +1,14 @@
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
-import { BotMessageSquare, User, Copy, Check } from 'lucide-react';
-import { Message } from "@/app/store/chatStore";
-import { AnimatePresence, motion } from 'framer-motion';
+import {Accordion, AccordionContent, AccordionItem, AccordionTrigger,} from "@/components/ui/accordion";
+import {BotMessageSquare, Check, Copy, User} from 'lucide-react';
+import {Message} from "@/app/store/chatStore";
+import {AnimatePresence, motion} from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeRaw from 'rehype-raw';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { prism as lightTheme } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { useTheme } from 'next-themes';
-import React, { useState, useEffect } from 'react';
+import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
+import {prism as lightTheme, vscDarkPlus} from 'react-syntax-highlighter/dist/esm/styles/prism';
+import {useTheme} from 'next-themes';
+import React, {useEffect, useState} from 'react';
 
 interface MessageListProps {
   messages: Message[];
