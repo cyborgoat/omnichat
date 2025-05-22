@@ -1,6 +1,6 @@
 import {Accordion, AccordionContent, AccordionItem, AccordionTrigger,} from "@/components/ui/accordion";
 import {BotMessageSquare, Check, Copy, User} from 'lucide-react';
-import {Message} from "@/app/store/chatStore";
+import {ChatItem, Message, SystemPromptUpdateEvent} from "@/app/store/chatStore";
 import {AnimatePresence, motion} from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -11,7 +11,7 @@ import {useTheme} from 'next-themes';
 import React, {useEffect, useState} from 'react';
 
 interface MessageListProps {
-  messages: Message[];
+  messages: ChatItem[];
 }
 
 interface CodeBlockProps {
@@ -105,74 +105,97 @@ export default function MessageList({ messages }: MessageListProps) {
   return (
     <div className="space-y-5 p-1 md:p-4 flex-grow">
       <AnimatePresence initial={false}>
-        {messages.map((msg) => (
-          <motion.div
-            key={msg.id}
-            layout
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, x: msg.sender === 'user' ? 20 : -20 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className={`flex items-end space-x-2.5 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
-          >
-            {msg.sender === "bot" && (
-              <BotMessageSquare size={28} className="text-primary mb-1 flex-shrink-0 self-start mt-1" />
-            )}
-            <div className="flex flex-col max-w-xl lg:max-w-3xl xl:max-w-4xl"> 
-              <div
-                className={`px-4 py-3 rounded-xl shadow-md 
-                  ${msg.sender === "user"
-                    ? "bg-primary text-primary-foreground rounded-br-none shadow-primary/20" 
-                    : "bg-card text-card-foreground rounded-bl-none shadow-muted/20 prose-chat-message"}
-                  text-sm`}
+        {messages.map((item) => {
+          if (item.type === "system_prompt_update") {
+            const event = item as SystemPromptUpdateEvent;
+            return (
+              <motion.div
+                key={event.id}
+                layout
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                className="py-2"
               >
-                {msg.sender === "bot" && msg.isStreaming && !msg.text && (
-                  <div className="flex items-center space-x-2 text-muted-foreground">
-                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-75"></div>
-                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-150"></div>
-                    <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-300"></div>
-                    <span className="text-xs">Assistant is typing...</span>
-                  </div>
-                )}
-                {msg.sender === 'bot' ? (
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeRaw]}
-                    components={{ code: CodeBlock }}
-                  >
-                    {msg.text}
-                  </ReactMarkdown>
-                ) : (
-                  <p className="whitespace-pre-wrap">{msg.text}</p>
-                )}
-                {msg.sender === "bot" && msg.thinkingSteps && msg.thinkingSteps.length > 0 && (
-                  <Accordion type="single" collapsible className="w-full mt-2.5 text-xs">
-                    <AccordionItem value={`thinking-${msg.id}`} className="border-t border-border pt-1.5">
-                      <AccordionTrigger className="text-muted-foreground hover:no-underline py-1.5 px-0 text-left">
-                        Show Reasoning ({msg.thinkingSteps.length} steps)
-                      </AccordionTrigger>
-                      <AccordionContent className="bg-muted p-2.5 rounded-md mt-1.5">
-                        <ul className="list-decimal list-inside space-y-1.5 text-muted-foreground">
-                          {msg.thinkingSteps.map((step, idx) => (
-                            <li key={idx}>{step}</li>
-                          ))}
-                        </ul>
-                      </AccordionContent>
-                    </AccordionItem>
-                  </Accordion>
+                <hr className="border-border my-2" />
+                <p className="text-xs text-center text-muted-foreground italic px-4">
+                  System prompt updated: &quot;{event.promptContent}&quot;
+                </p>
+                <hr className="border-border my-2" />
+              </motion.div>
+            );
+          }
+          
+          const msg = item as Message;
+          return (
+            <motion.div
+              key={msg.id}
+              layout
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, x: msg.sender === 'user' ? 20 : -20 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className={`flex items-end space-x-2.5 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+            >
+              {msg.sender === "bot" && (
+                <BotMessageSquare size={28} className="text-primary mb-1 flex-shrink-0 self-start mt-1" />
+              )}
+              <div className="flex flex-col max-w-xl lg:max-w-3xl xl:max-w-4xl"> 
+                <div
+                  className={`px-4 py-3 rounded-xl shadow-md 
+                    ${msg.sender === "user"
+                      ? "bg-primary text-primary-foreground rounded-br-none shadow-primary/20" 
+                      : "bg-card text-card-foreground rounded-bl-none shadow-muted/20 prose-chat-message"}
+                    text-sm`}
+                >
+                  {msg.sender === "bot" && msg.isStreaming && !msg.text && (
+                    <div className="flex items-center space-x-2 text-muted-foreground">
+                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-75"></div>
+                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-150"></div>
+                      <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-300"></div>
+                      <span className="text-xs">Assistant is typing...</span>
+                    </div>
+                  )}
+                  {msg.sender === 'bot' ? (
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeRaw]}
+                      components={{ code: CodeBlock }}
+                    >
+                      {msg.text}
+                    </ReactMarkdown>
+                  ) : (
+                    <p className="whitespace-pre-wrap">{msg.text}</p>
+                  )}
+                  {msg.sender === "bot" && msg.thinkingSteps && msg.thinkingSteps.length > 0 && (
+                    <Accordion type="single" collapsible className="w-full mt-2.5 text-xs">
+                      <AccordionItem value={`thinking-${msg.id}`} className="border-t border-border pt-1.5">
+                        <AccordionTrigger className="text-muted-foreground hover:no-underline py-1.5 px-0 text-left">
+                          Show Reasoning ({msg.thinkingSteps.length} steps)
+                        </AccordionTrigger>
+                        <AccordionContent className="bg-muted p-2.5 rounded-md mt-1.5">
+                          <ul className="list-decimal list-inside space-y-1.5 text-muted-foreground">
+                            {msg.thinkingSteps.map((step, idx) => (
+                              <li key={idx}>{step}</li>
+                            ))}
+                          </ul>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  )}
+                </div>
+                {msg.timestamp && (
+                  <p className={`text-xs mt-1 ${msg.sender === 'user' ? 'text-muted-foreground text-right' : 'text-muted-foreground text-left pl-1'}`}>
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
                 )}
               </div>
-              {msg.timestamp && (
-                <p className={`text-xs mt-1 ${msg.sender === 'user' ? 'text-muted-foreground text-right' : 'text-muted-foreground text-left pl-1'}`}>
-                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </p>
+              {msg.sender === "user" && (
+                <User size={28} className="text-primary mb-1 flex-shrink-0 self-start mt-1" />
               )}
-            </div>
-            {msg.sender === "user" && (
-              <User size={28} className="text-primary mb-1 flex-shrink-0 self-start mt-1" />
-            )}
-          </motion.div>
-        ))}
+            </motion.div>
+          );
+        })}
       </AnimatePresence>
     </div>
   );

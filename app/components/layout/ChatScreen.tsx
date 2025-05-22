@@ -46,6 +46,7 @@ export default function ChatScreen() {
 
     const userMessage: Message = {
       id: uuidv4(),
+      type: "message",
       text: messageText,
       sender: "user",
       timestamp: new Date().toISOString(),
@@ -57,6 +58,7 @@ export default function ChatScreen() {
     const botMessageId = uuidv4();
     const initialBotMessage: Message = {
       id: botMessageId,
+      type: "message",
       text: "",
       sender: "bot",
       timestamp: new Date().toISOString(),
@@ -134,11 +136,13 @@ export default function ChatScreen() {
 
     // Construct apiMessages from the latest session state, excluding the placeholder bot message
     const apiMessages = currentSessionState.messages
-      .filter((m) => m.id !== botMessageId)
-      .map((m) => ({
-        role: m.sender === "bot" ? "assistant" : "user",
-        content: m.text,
-      }));
+      .filter((item): item is Message => item.type === "message" && item.id !== botMessageId)
+      .map((msg) => {
+        return {
+          role: msg.sender === "bot" ? "assistant" : "user",
+          content: msg.text,
+        };
+      });
 
     // Safety check if apiMessages is somehow still empty (e.g. if user message wasn't properly added or filtered)
     if (apiMessages.length === 0) {
@@ -260,7 +264,8 @@ export default function ChatScreen() {
         .chatSessions.find((s) => s.id === currentSessionState.id);
       const finalBotMsgCheck = finalSessionCheck?.messages.find(
         (m) => m.id === botMessageId
-      );
+      ) as Message | undefined;
+
       if (finalBotMsgCheck?.isStreaming) {
         store.setMessageStreamingState(
           currentSessionState.id,

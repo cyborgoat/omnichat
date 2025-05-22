@@ -128,6 +128,12 @@ async function* handleQwenRequest(apiKey: string, modelId: string, messages: Cha
         const systemMessageIndex = qwenMessages.findIndex(m => m.role === 'system');
         if (systemMessageIndex !== -1) qwenMessages.splice(systemMessageIndex, 1);
         qwenMessages.unshift({ role: 'system', content: systemPrompt });
+    } else {
+        // If systemPrompt is empty or undefined, remove any existing system message
+        const systemMessageIndex = qwenMessages.findIndex(m => m.role === 'system');
+        if (systemMessageIndex !== -1) {
+            qwenMessages.splice(systemMessageIndex, 1);
+        }
     }
 
     const payload = {

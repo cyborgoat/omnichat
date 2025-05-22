@@ -36,6 +36,8 @@ export default function LeftSideMenu() {
     renameChatSession,
     globalSystemPrompt,
     setGlobalSystemPrompt,
+    addSystemMessageToActiveChat,
+    updateSessionSystemPrompt,
   } = useChatStore();
 
   const [currentProviderApiKey, setCurrentProviderApiKey] = useState("");
@@ -112,6 +114,22 @@ export default function LeftSideMenu() {
   const handleClearAllSessions = () => {
     chatSessions.forEach(session => deleteChatSession(session.id));
     setClearingAllSessions(false);
+  };
+
+  const handleApplyGlobalSystemPrompt = () => {
+    if (activeChatSessionId) {
+      if (updateSessionSystemPrompt) {
+        updateSessionSystemPrompt(activeChatSessionId, globalSystemPrompt);
+      }
+
+      if (addSystemMessageToActiveChat) {
+        addSystemMessageToActiveChat(globalSystemPrompt);
+      } else {
+        console.warn(
+          "LeftSideMenu: 'addSystemMessageToActiveChat' function is not available in useChatStore. Cannot append system prompt update event to current session."
+        );
+      }
+    }
   };
 
   return (
@@ -257,7 +275,32 @@ export default function LeftSideMenu() {
               </div>
 
               <div className="mt-auto pt-3 border-t border-sidebar-border/70 flex-shrink-0">
-                <div className="mb-3">
+                <div>
+                  <label
+                    htmlFor="system-prompt-input"
+                    className="block text-xs font-medium text-sidebar-foreground/70 mb-1 px-1"
+                  >
+                    Global System Prompt
+                  </label>
+                  <Textarea
+                    id="system-prompt-input"
+                    placeholder="Set a global system prompt..."
+                    value={globalSystemPrompt}
+                    onChange={(e) => setGlobalSystemPrompt(e.target.value)}
+                    className="w-full min-h-[60px] bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/50 focus:ring-sidebar-ring focus:border-sidebar-ring no-scrollbar"
+                    rows={3}
+                  />
+                  <Button
+                    onClick={handleApplyGlobalSystemPrompt}
+                    variant="secondary"
+                    size="sm"
+                    className="mt-2 bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 h-7 w-full"
+                  >
+                    Apply to Current Chat
+                  </Button>
+                </div>
+
+                <div className="my-3">
                   <label
                     htmlFor="model-select"
                     className="block text-xs font-medium text-sidebar-foreground/70 mb-1 px-1"
@@ -340,23 +383,6 @@ export default function LeftSideMenu() {
                     </Button>
                   </div>
                 )}
-
-                <div>
-                  <label
-                    htmlFor="system-prompt-input"
-                    className="block text-xs font-medium text-sidebar-foreground/70 mb-1 px-1"
-                  >
-                    Global System Prompt
-                  </label>
-                  <Textarea
-                    id="system-prompt-input"
-                    placeholder="Set a global system prompt..."
-                    value={globalSystemPrompt}
-                    onChange={(e) => setGlobalSystemPrompt(e.target.value)}
-                    className="w-full min-h-[60px] bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/50 focus:ring-sidebar-ring focus:border-sidebar-ring no-scrollbar"
-                    rows={3}
-                  />
-                </div>
               </div>
             </motion.div>
           )}

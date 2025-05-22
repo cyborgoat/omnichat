@@ -13,6 +13,7 @@ export interface Model {
 
 export interface Message {
   id: string;
+  type: "message";
   text: string;
   sender: "user" | "bot";
   timestamp: string;
@@ -21,12 +22,21 @@ export interface Message {
   // We can add more fields like 'metadata' for images or files, or error states
 }
 
+export interface SystemPromptUpdateEvent {
+  id: string;
+  type: "system_prompt_update";
+  promptContent: string; // The actual system prompt text that was applied
+  timestamp: string;
+}
+
+export type ChatItem = Message | SystemPromptUpdateEvent;
+
 export interface ChatSession {
   id: string;
-  name: string; 
-  messages: Message[];
-  modelId: string; 
-  systemPrompt: string;
+  name: string;
+  messages: ChatItem[]; // Changed from Message[]
+  modelId: string;
+  systemPrompt: string; // This is the actual system prompt used for LLM requests for this session
   createdAt: string;
 }
 
@@ -66,6 +76,7 @@ export interface ChatState extends PersistedChatState {
   setMessageStreamingState: (sessionId: string, messageId: string, isStreaming: boolean) => void;
   setBotThinking: (isThinking: boolean) => void;
   setSendingMessage: (isSending: boolean) => void;
+  addSystemMessageToActiveChat: (systemPrompt: string) => void;
 }
 
 const initialModels: Model[] = [
@@ -205,8 +216,10 @@ export const useChatStore = create<ChatState>()(
             s.id === sessionId
               ? {
                   ...s,
-                  messages: s.messages.map(m =>
-                    m.id === messageId ? { ...m, text: newContent, isStreaming: false } : m // Also set streaming to false when content is fully updated
+                  messages: s.messages.map(item =>
+                    item.id === messageId && item.type === "message"
+                      ? { ...item, text: newContent, isStreaming: false }
+                      : item
                   ),
                 }
               : s
@@ -220,8 +233,10 @@ export const useChatStore = create<ChatState>()(
             s.id === sessionId
               ? {
                   ...s,
-                  messages: s.messages.map(m =>
-                    m.id === messageId ? { ...m, text: m.text + contentChunk, isStreaming: true } : m // Keep isStreaming true while appending
+                  messages: s.messages.map(item =>
+                    item.id === messageId && item.type === "message"
+                      ? { ...item, text: item.text + contentChunk, isStreaming: true }
+                      : item
                   ),
                 }
               : s
@@ -235,8 +250,10 @@ export const useChatStore = create<ChatState>()(
             s.id === sessionId
               ? {
                   ...s,
-                  messages: s.messages.map(m =>
-                    m.id === messageId ? { ...m, isStreaming } : m
+                  messages: s.messages.map(item =>
+                    item.id === messageId && item.type === "message"
+                      ? { ...item, isStreaming }
+                      : item
                   ),
                 }
               : s
@@ -246,6 +263,28 @@ export const useChatStore = create<ChatState>()(
 
       setBotThinking: (isThinking) => set({ isBotThinking: isThinking }),
       setSendingMessage: (isSending) => set({ isSendingMessage: isSending }),
+
+      addSystemMessageToActiveChat: (promptContent) => {
+        set((state) => {
+          const activeSessionId = state.activeChatSessionId;
+          if (activeSessionId && promptContent && promptContent.trim() !== "") {
+            const newEvent: SystemPromptUpdateEvent = {
+              id: uuidv4(),
+              type: "system_prompt_update",
+              promptContent: promptContent,
+              timestamp: new Date().toISOString(),
+            };
+            return {
+              chatSessions: state.chatSessions.map(session =>
+                session.id === activeSessionId
+                  ? { ...session, messages: [...session.messages, newEvent] }
+                  : session
+              ),
+            };
+          }
+          return {}; // No change if no active session or empty/whitespace prompt
+        });
+      },
     }),
     {
       name: 'omnichat-storage', 
