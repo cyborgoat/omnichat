@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  Check,
   Edit3,
   Menu as MenuIcon,
   Moon,
   PlusCircle,
+  RotateCcw,
   Sun,
   Trash2,
   X as XIcon,
@@ -35,6 +37,7 @@ import {
 } from "@/components/ui/dialog";
 import { useTheme } from "next-themes";
 import SettingsDialog from "../settings/SettingsDialog";
+import { toast } from "sonner";
 
 export default function LeftSideMenu() {
   const {
@@ -64,14 +67,33 @@ export default function LeftSideMenu() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
+  const [unsavedGlobalSystemPrompt, setUnsavedGlobalSystemPrompt] = useState(globalSystemPrompt);
+  const [lastAppliedPromptForSession, setLastAppliedPromptForSession] = useState<string | undefined>(undefined);
+
   React.useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    setUnsavedGlobalSystemPrompt(globalSystemPrompt);
+  }, [globalSystemPrompt]);
 
   const activeSession = chatSessions.find((s) => s.id === activeChatSessionId);
   const displayModelId = activeSession
     ? activeSession.modelId
     : selectedModelId;
+
+  useEffect(() => {
+    if (activeSession) {
+        setLastAppliedPromptForSession(activeSession.systemPrompt);
+    } else {
+        setLastAppliedPromptForSession(undefined);
+    }
+  }, [activeSession, activeChatSessionId]);
+
+  const isPromptDirty = activeChatSessionId 
+    ? unsavedGlobalSystemPrompt !== lastAppliedPromptForSession
+    : unsavedGlobalSystemPrompt !== globalSystemPrompt;
 
   const menuVariants = {
     expanded: { width: "16rem", opacity: 1 },
@@ -110,19 +132,16 @@ export default function LeftSideMenu() {
   };
 
   const handleApplyGlobalSystemPrompt = () => {
-    if (activeChatSessionId) {
-      if (updateSessionSystemPrompt) {
-        updateSessionSystemPrompt(activeChatSessionId, globalSystemPrompt);
-      }
-
-      if (addSystemMessageToActiveChat) {
-        addSystemMessageToActiveChat(globalSystemPrompt);
-      } else {
-        console.warn(
-          "LeftSideMenu: 'addSystemMessageToActiveChat' function is not available in useChatStore. Cannot append system prompt update event to current session."
-        );
-      }
+    if (!activeChatSessionId) {
+      toast.error("No active chat session to apply the prompt to.");
+      return;
     }
+
+    setGlobalSystemPrompt(unsavedGlobalSystemPrompt);
+    updateSessionSystemPrompt(activeChatSessionId, unsavedGlobalSystemPrompt);
+    addSystemMessageToActiveChat(unsavedGlobalSystemPrompt);
+    setLastAppliedPromptForSession(unsavedGlobalSystemPrompt);
+    toast.success("Global system prompt applied to current chat!");
   };
 
   return (
@@ -275,22 +294,44 @@ export default function LeftSideMenu() {
                   >
                     Global System Prompt
                   </label>
-                  <Textarea
-                    id="system-prompt-input"
-                    placeholder="Set a global system prompt..."
-                    value={globalSystemPrompt}
-                    onChange={(e) => setGlobalSystemPrompt(e.target.value)}
-                    className="w-full min-h-[80px] bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/50 focus:ring-sidebar-ring focus:border-sidebar-ring no-scrollbar !text-xs"
-                    rows={5}
-                  />
-                  <Button
-                    onClick={handleApplyGlobalSystemPrompt}
-                    variant="secondary"
-                    size="sm"
-                    className="mt-2 bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 h-7 w-full"
-                  >
-                    Apply to Current Chat
-                  </Button>
+                  <div className="relative w-full">
+                    <Textarea
+                      id="system-prompt-input"
+                      placeholder="Set a global system prompt..."
+                      value={unsavedGlobalSystemPrompt}
+                      onChange={(e) => setUnsavedGlobalSystemPrompt(e.target.value)}
+                      className="w-full min-h-[80px] bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/50 focus:ring-sidebar-ring focus:border-sidebar-ring no-scrollbar !text-xs pr-10 pb-2"
+                      rows={5}
+                    />
+                    <div className="absolute bottom-1 right-1 flex items-center space-x-1">
+                      {isPromptDirty ? (
+                        <>
+                          <Button
+                            onClick={handleApplyGlobalSystemPrompt}
+                            variant="ghost"
+                            size="sm" 
+                            className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/70 h-auto px-1.5 py-0.5 text-xs flex items-center"
+                            aria-label="Apply unsaved system prompt"
+                          >
+                            <Check size={14} className="mr-1" /> Apply
+                          </Button>
+                          <Button
+                            onClick={() => setUnsavedGlobalSystemPrompt(lastAppliedPromptForSession || globalSystemPrompt)}
+                            variant="ghost"
+                            size="sm" 
+                            className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/70 h-auto px-1.5 py-0.5 text-xs flex items-center"
+                            aria-label="Undo changes to system prompt"
+                          >
+                            <RotateCcw size={14} className="mr-1" /> Undo
+                          </Button>
+                        </>
+                      ) : (
+                        <div className="text-xs text-sidebar-foreground/60 flex items-center px-1.5 py-0.5">
+                          <Check size={14} className="mr-1 text-green-500" /> Applied
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="my-3">
