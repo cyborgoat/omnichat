@@ -6,12 +6,13 @@ import MessageList from "../chat/MessageList";
 import ChatInput from "../chat/ChatInput";
 import {Message, useActiveChatSession, useChatStore,} from "@/app/store/chatStore";
 import {WelcomeScreen} from "../chat/WelcomeScreen";
+import { API_ENDPOINTS } from "@/app/constants";
 
 export default function ChatScreen() {
   const store = useChatStore(); // Get the whole store for easier access to multiple states/actions
   const activeSession = useActiveChatSession();
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
+  
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
@@ -29,6 +30,7 @@ export default function ChatScreen() {
     ) {
       // This case is handled by the store subscription now.
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     store.activeChatSessionId,
     store.chatSessions,
@@ -170,7 +172,7 @@ export default function ChatScreen() {
       currentSessionState.systemPrompt || store.globalSystemPrompt;
 
     try {
-      const response = await fetch("/api/chat", {
+      const response = await fetch(API_ENDPOINTS.CHAT, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

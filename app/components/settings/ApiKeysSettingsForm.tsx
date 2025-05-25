@@ -48,7 +48,6 @@ export function ApiKeysSettingsForm() {
   });
 
   function onApiKeySubmit(data: ApiKeyFormValues) {
-    console.log("API Key Data Submitted:", data);
     // Save API keys using the correct provider names
     if (data.OpenAI !== undefined) setApiKey("OpenAI", data.OpenAI);
     if (data.Google !== undefined) setApiKey("Google", data.Google);

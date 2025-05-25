@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/form";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { STORAGE_KEYS } from "@/app/constants";
 
 // Define the schema for Profile Settings
 const profileSchema = z.object({
@@ -35,8 +36,8 @@ export function ProfileSettingsForm() {
 
   useEffect(() => {
     // Load saved data from localStorage
-    const savedUsername = localStorage.getItem("profileUsername");
-    const savedAvatar = localStorage.getItem("profileAvatar");
+    const savedUsername = localStorage.getItem(STORAGE_KEYS.PROFILE_USERNAME);
+    const savedAvatar = localStorage.getItem(STORAGE_KEYS.PROFILE_AVATAR);
     if (savedUsername) {
       profileForm.setValue("username", savedUsername);
     }
@@ -46,12 +47,11 @@ export function ProfileSettingsForm() {
   }, [profileForm]);
 
   function onProfileSubmit(data: ProfileFormValues) {
-    console.log("Profile Data Submitted:", data);
     if (data.username !== undefined) {
-        localStorage.setItem("profileUsername", data.username);
+        localStorage.setItem(STORAGE_KEYS.PROFILE_USERNAME, data.username);
     }
     if (data.avatar !== undefined) {
-        localStorage.setItem("profileAvatar", data.avatar);
+        localStorage.setItem(STORAGE_KEYS.PROFILE_AVATAR, data.avatar);
     }
     toast.success("Profile settings saved!");
   }

@@ -5,19 +5,15 @@ import {Input} from "@/components/ui/input";
 import {Button} from "@/components/ui/button";
 import {FileText, Paperclip, Send, XCircle} from "lucide-react";
 import {motion} from "framer-motion";
-import {useChatStore} from "@/app/store/chatStore"; // Import useChatStore
-
-// Define allowed file types
-const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
-const ALLOWED_TEXT_TYPES = ["text/plain", "text/markdown", "application/pdf", "application/json", "application/xml", "text/csv", "text/html", "application/javascript"];
-const MAX_FILE_SIZE_MB = 10; // Max file size in MB
-const MAX_TOTAL_FILES = 5; // Max number of files
-
-interface SelectedFile {
-  id: string;
-  file: File;
-  previewUrl?: string;
-}
+import {useChatStore} from "@/app/store/chatStore";
+import {
+  ALLOWED_IMAGE_TYPES,
+  ALLOWED_TEXT_TYPES,
+  MAX_FILE_SIZE_MB,
+  MAX_TOTAL_FILES,
+} from "@/app/constants";
+import { SelectedFile } from "@/app/types";
+import { FilePreview } from "../ui/file-preview";
 
 interface ChatInputProps {
   onSendMessage: (messageText: string, files?: File[]) => void;
@@ -102,7 +98,7 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
             {selectedFiles.map((sf) => (
               <div key={sf.id} className="relative group w-20 h-20 md:w-24 md:h-24 border border-border rounded-md overflow-hidden shadow-sm flex flex-col items-center justify-center bg-background">
                 {sf.previewUrl ? (
-                  <img src={sf.previewUrl} alt={sf.file.name} className="w-full h-full object-contain" /> // Changed to object-contain
+                  <FilePreview src={sf.previewUrl} alt={sf.file.name} className="w-full h-full object-contain" />
                 ) : (
                   <div className="flex flex-col items-center justify-center text-muted-foreground p-1 text-center">
                     <FileText size={24} className="md:size-32" />
