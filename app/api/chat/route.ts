@@ -1,15 +1,15 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {Content} from '@google/generative-ai';
 import OpenAI from 'openai';
-import Anthropic from '@anthropic-ai/sdk';
 import { spawn } from 'node:child_process';
 
 // We will add Qwen specific imports or helpers later if needed.
 
-// Curl-based proxy fetch function
-async function curlFetch(url: string, options: RequestInit, proxySettings?: { enabled?: boolean; http?: string; https?: string; socks?: string }): Promise<Response> {
+// Curl-based proxy fetch function for non-streaming requests
+async function curlFetchNonStreaming(url: string, options: RequestInit, proxySettings?: { enabled?: boolean; http?: string; https?: string; socks?: string }): Promise<Response> {
   if (!proxySettings || !proxySettings.enabled || (!proxySettings.socks && !proxySettings.https && !proxySettings.http)) {
     // No proxy or proxy disabled, use regular fetch
+    console.log(`🌐 Using regular fetch (no proxy) for: ${url}`);
     return fetch(url, options);
   }
 
@@ -105,9 +105,163 @@ async function curlFetch(url: string, options: RequestInit, proxySettings?: { en
         json: async () => JSON.parse(bodyPart),
         text: async () => bodyPart,
         body: null,
-      } as Response;
+      } as unknown as Response;
       
       resolve(response);
+    });
+    
+    curl.on('error', (error) => {
+      console.error(`❌ Curl spawn error:`, error);
+      reject(error);
+    });
+  });
+}
+
+// Curl-based proxy fetch function for streaming requests
+async function curlFetch(url: string, options: RequestInit, proxySettings?: { enabled?: boolean; http?: string; https?: string; socks?: string }): Promise<Response> {
+  if (!proxySettings || !proxySettings.enabled || (!proxySettings.socks && !proxySettings.https && !proxySettings.http)) {
+    // No proxy or proxy disabled, use regular fetch
+    console.log(`🌐 Using regular fetch (no proxy) for: ${url}`);
+    return fetch(url, options);
+  }
+
+  console.log(`🌐 Using curl with proxy for: ${url}`);
+  
+  return new Promise((resolve, reject) => {
+    const curlArgs = ['-s', '-i', '--no-buffer']; // --no-buffer for streaming
+    
+    // Add proxy settings
+    if (proxySettings.socks) {
+      curlArgs.push('--proxy', proxySettings.socks);
+      console.log(`📡 Using SOCKS proxy: ${proxySettings.socks}`);
+    } else if (proxySettings.https) {
+      curlArgs.push('--proxy', proxySettings.https);
+      console.log(`📡 Using HTTPS proxy: ${proxySettings.https}`);
+    } else if (proxySettings.http) {
+      curlArgs.push('--proxy', proxySettings.http);
+      console.log(`📡 Using HTTP proxy: ${proxySettings.http}`);
+    }
+    
+    // Add method
+    if (options.method && options.method !== 'GET') {
+      curlArgs.push('-X', options.method);
+    }
+    
+    // Add headers
+    if (options.headers) {
+      const headers = options.headers as Record<string, string>;
+      Object.entries(headers).forEach(([key, value]) => {
+        curlArgs.push('-H', `${key}: ${value}`);
+      });
+    }
+    
+    // Add body
+    if (options.body) {
+      curlArgs.push('-d', options.body as string);
+    }
+    
+    // Add URL
+    curlArgs.push(url);
+    
+    console.log(`📡 Executing curl with args:`, curlArgs.slice(0, -1).join(' '), '[URL]');
+    
+    const curl = spawn('curl', curlArgs);
+    let headersParsed = false;
+    let status = 200;
+    let statusText = 'OK';
+    const headers = new Headers();
+    let headerBuffer = '';
+    
+    // Create a readable stream for the response body
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+    
+    curl.stdout.on('data', (data) => {
+      const chunk = data.toString();
+      
+      if (!headersParsed) {
+        headerBuffer += chunk;
+        
+        // Check if we have complete headers (double CRLF)
+        const headerEndIndex = headerBuffer.indexOf('\r\n\r\n');
+        if (headerEndIndex !== -1) {
+          const headerPart = headerBuffer.substring(0, headerEndIndex);
+          const bodyStart = headerBuffer.substring(headerEndIndex + 4);
+          
+          // Parse status line
+          const statusLine = headerPart.split('\r\n')[0];
+          const statusMatch = statusLine.match(/HTTP\/[\d.]+\s+(\d+)\s*(.*)/);
+          status = statusMatch ? parseInt(statusMatch[1]) : 200;
+          statusText = statusMatch ? statusMatch[2] : 'OK';
+          
+          // Parse headers
+          const headerLines = headerPart.split('\r\n').slice(1);
+          headerLines.forEach(line => {
+            const colonIndex = line.indexOf(':');
+            if (colonIndex > 0) {
+              const key = line.substring(0, colonIndex).trim();
+              const value = line.substring(colonIndex + 1).trim();
+              headers.set(key, value);
+            }
+          });
+          
+          headersParsed = true;
+          
+          // Resolve with the response object
+          const response = {
+            ok: status >= 200 && status < 300,
+            status,
+            statusText,
+            headers,
+            body: readable,
+            json: async () => { throw new Error('json() not supported for streaming response'); },
+            text: async () => {
+              // For error responses, try to read the body
+              if (status >= 400) {
+                const reader = readable.getReader();
+                const decoder = new TextDecoder();
+                let result = '';
+                try {
+                  while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    result += decoder.decode(value, { stream: true });
+                  }
+                  return result;
+                } catch (e) {
+                  return `Error reading response body: ${e}`;
+                }
+              }
+              throw new Error('text() not supported for successful streaming response');
+            },
+          } as unknown as Response;
+          
+          resolve(response);
+          
+          // Write any body data that came with headers
+          if (bodyStart) {
+            writer.write(new TextEncoder().encode(bodyStart));
+          }
+        }
+      } else {
+        // Headers already parsed, write body data
+        writer.write(new TextEncoder().encode(chunk));
+      }
+    });
+    
+    curl.stderr.on('data', (data) => {
+      console.error(`❌ Curl stderr:`, data.toString());
+    });
+    
+    curl.on('close', (code) => {
+      if (code !== 0) {
+        console.error(`❌ Curl failed with code ${code}`);
+        reject(new Error(`Curl failed with code ${code}`));
+        return;
+      }
+      
+      console.log(`✅ Curl request completed`);
+      writer.close();
     });
     
     curl.on('error', (error) => {
@@ -204,7 +358,7 @@ async function* handleGeminiRequest(apiKey: string, modelId: string, messages: C
   console.log(`[GEMINI] Using proxy settings:`, !!proxySettings);
 
   try {
-    const response = await curlFetch(url, fetchOptions, proxySettings);
+    const response = await curlFetchNonStreaming(url, fetchOptions, proxySettings);
     
     if (!response.ok) {
       const errorText = await response.text();
@@ -489,12 +643,12 @@ async function* handleQwenRequest(apiKey: string, modelId: string, messages: Cha
     }
 }
 
-// --- OpenAI Handler ---
-async function* handleOpenAIRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string): AsyncGenerator<string> {
-  const openai = new OpenAI({ apiKey });
+// --- OpenAI Handler (Curl-based with Proxy Support) ---
+async function* handleOpenAIRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string, proxySettings?: { enabled?: boolean; http?: string; https?: string; socks?: string }): AsyncGenerator<string> {
+  console.log(`[OPENAI] Using direct HTTP API with proxy settings:`, proxySettings);
 
-  const apiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = messages.map(msg => ({
-    role: msg.role === 'model' ? 'assistant' : msg.role as 'user' | 'assistant' | 'system',
+  const apiMessages: {role: string, content: string}[] = messages.map(msg => ({
+    role: msg.role === 'model' ? 'assistant' : msg.role,
     content: msg.content,
   }));
 
@@ -508,61 +662,206 @@ async function* handleOpenAIRequest(apiKey: string, modelId: string, messages: C
     }
   } else {
     // If no systemPrompt is provided, remove any existing system message from the array
-    // to prevent an old one from being used unintentionally.
     const systemMessageIndex = apiMessages.findIndex(m => m.role === 'system');
     if (systemMessageIndex !== -1) {
       apiMessages.splice(systemMessageIndex, 1);
     }
   }
-  
-  try {
-    const stream = await openai.chat.completions.create({
-        model: modelId,
-        messages: apiMessages,
-        stream: true,
-    });
 
-    for await (const chunk of stream) {
-        if (chunk.choices[0]?.delta?.content) {
-        yield chunk.choices[0].delta.content;
-        }
+  const payload = {
+    model: modelId,
+    messages: apiMessages,
+    stream: true,
+    temperature: 0.7,
+    max_tokens: 2048,
+  };
+
+  const url = 'https://api.openai.com/v1/chat/completions';
+  
+  const fetchOptions: RequestInit = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(payload),
+  };
+
+  console.log(`[OPENAI] Making direct HTTP request to: ${url}`);
+  console.log(`[OPENAI] Using proxy settings:`, !!proxySettings);
+
+  try {
+    const response = await curlFetch(url, fetchOptions, proxySettings);
+    
+    if (!response.ok) {
+      let errorText = `HTTP ${response.status} ${response.statusText}`;
+      try {
+        errorText = await response.text();
+      } catch (e) {
+        console.warn(`[OPENAI] Could not read error response body:`, e);
+      }
+      console.error(`[OPENAI] HTTP error: ${response.status} ${response.statusText}`, errorText);
+      throw new Error(`OpenAI API HTTP error: ${response.status} ${response.statusText} - ${errorText}`);
     }
+
+    console.log(`[OPENAI] Successfully connected, processing response...`);
+
+    if (!response.body) {
+      throw new Error("OpenAI response body is null");
+    }
+
+    // Process SSE stream
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      
+      let eolIndex;
+      while ((eolIndex = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.substring(0, eolIndex);
+        buffer = buffer.substring(eolIndex + 1);
+
+        if (line.startsWith("data: ")) {
+          const dataJson = line.substring(6).trim();
+          if (dataJson === "[DONE]") {
+            console.log(`[OPENAI] Stream completed`);
+            return;
+          }
+          
+          try {
+            const parsedData = JSON.parse(dataJson);
+            const choice = parsedData.choices?.[0];
+            
+            if (choice?.delta?.content) {
+              yield choice.delta.content;
+            }
+            
+            if (choice?.finish_reason === "stop") {
+              console.log(`[OPENAI] Stream finished with stop reason`);
+              return;
+            }
+          } catch (e) {
+            console.error("[OPENAI] Error parsing SSE event:", e, "Event string:", dataJson);
+          }
+        }
+      }
+    }
+    
+    console.log(`[OPENAI] Response processing completed successfully`);
   } catch (e: unknown) {
-    console.error("OpenAI streaming error:", e);
+    console.error("[OPENAI] Direct HTTP request error:", e);
     const message = e instanceof Error ? e.message : String(e);
     throw new Error(`OpenAI API streaming error: ${message}`);
   }
 }
 
-// --- Anthropic Handler ---
-async function* handleAnthropicRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string): AsyncGenerator<string> {
-  const anthropic = new Anthropic({ apiKey });
-  
+// --- Anthropic Handler (Curl-based with Proxy Support) ---
+async function* handleAnthropicRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string, proxySettings?: { enabled?: boolean; http?: string; https?: string; socks?: string }): AsyncGenerator<string> {
+  console.log(`[ANTHROPIC] Using direct HTTP API with proxy settings:`, proxySettings);
+
   const filteredMessages = messages.filter(msg => msg.role === 'user' || msg.role === 'assistant');
-  const apiMessages: Anthropic.Messages.MessageParam[] = filteredMessages.map(msg => ({
+  const apiMessages: {role: string, content: string}[] = filteredMessages.map(msg => ({
     role: msg.role as 'user' | 'assistant',
     content: msg.content,
   }));
 
   if (apiMessages.length > 0 && apiMessages[0].role !== 'user') {
-      console.warn("Anthropic: First message was not from user. This might cause issues.");
+      console.warn("[ANTHROPIC] First message was not from user. This might cause issues.");
   }
-  
-  try {
-    const stream = await anthropic.messages.stream({
-        model: modelId,
-        max_tokens: 2048, 
-        ...(systemPrompt && { system: systemPrompt }),
-        messages: apiMessages,
-    });
 
-    for await (const event of stream) {
-        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-        yield event.delta.text;
-        }
+  const payload = {
+    model: modelId,
+    max_tokens: 2048,
+    messages: apiMessages,
+    stream: true,
+    ...(systemPrompt && { system: systemPrompt }),
+  };
+
+  const url = 'https://api.anthropic.com/v1/messages';
+  
+  const fetchOptions: RequestInit = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify(payload),
+  };
+
+  console.log(`[ANTHROPIC] Making direct HTTP request to: ${url}`);
+  console.log(`[ANTHROPIC] Using proxy settings:`, !!proxySettings);
+
+  try {
+    const response = await curlFetch(url, fetchOptions, proxySettings);
+    
+    if (!response.ok) {
+      let errorText = `HTTP ${response.status} ${response.statusText}`;
+      try {
+        errorText = await response.text();
+      } catch (e) {
+        console.warn(`[ANTHROPIC] Could not read error response body:`, e);
+      }
+      console.error(`[ANTHROPIC] HTTP error: ${response.status} ${response.statusText}`, errorText);
+      throw new Error(`Anthropic API HTTP error: ${response.status} ${response.statusText} - ${errorText}`);
     }
+
+    console.log(`[ANTHROPIC] Successfully connected, processing response...`);
+
+    if (!response.body) {
+      throw new Error("Anthropic response body is null");
+    }
+
+    // Process SSE stream
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      
+      let eolIndex;
+      while ((eolIndex = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.substring(0, eolIndex);
+        buffer = buffer.substring(eolIndex + 1);
+
+        if (line.startsWith("data: ")) {
+          const dataJson = line.substring(6).trim();
+          if (dataJson === "[DONE]") {
+            console.log(`[ANTHROPIC] Stream completed`);
+            return;
+          }
+          
+          try {
+            const parsedData = JSON.parse(dataJson);
+            
+            // Handle Anthropic's streaming format
+            if (parsedData.type === 'content_block_delta' && parsedData.delta?.type === 'text_delta') {
+              yield parsedData.delta.text;
+            }
+            
+            if (parsedData.type === 'message_stop') {
+              console.log(`[ANTHROPIC] Stream finished with message_stop`);
+              return;
+            }
+          } catch (e) {
+            console.error("[ANTHROPIC] Error parsing SSE event:", e, "Event string:", dataJson);
+          }
+        }
+      }
+    }
+    
+    console.log(`[ANTHROPIC] Response processing completed successfully`);
   } catch (e: unknown) {
-    console.error("Anthropic streaming error:", e);
+    console.error("[ANTHROPIC] Direct HTTP request error:", e);
     const message = e instanceof Error ? e.message : String(e);
     throw new Error(`Anthropic API streaming error: ${message}`);
   }
@@ -585,9 +884,9 @@ export async function POST(req: NextRequest) {
     // TODO: Get provider from store model object for more robust routing.
     // For now, simple string matching based on common model ID prefixes.
     if (modelId.toLowerCase().startsWith('gpt')) {
-      streamGenerator = handleOpenAIRequest(apiKey, modelId, messages, systemPrompt);
+      streamGenerator = handleOpenAIRequest(apiKey, modelId, messages, systemPrompt, proxySettings);
     } else if (modelId.toLowerCase().startsWith('claude')) {
-      streamGenerator = handleAnthropicRequest(apiKey, modelId, messages, systemPrompt);
+      streamGenerator = handleAnthropicRequest(apiKey, modelId, messages, systemPrompt, proxySettings);
     } else if (modelId.toLowerCase().startsWith('gemini')) {
       streamGenerator = handleGeminiRequest(apiKey, modelId, messages, systemPrompt, proxySettings);
     } else if (modelId.toLowerCase().startsWith('qwen') || modelId.toLowerCase().startsWith('qwq') || modelId.toLowerCase().includes('deepseek-r1')) {

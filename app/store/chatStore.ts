@@ -93,6 +93,10 @@ export interface ChatState extends PersistedChatState {
 
 const initialModels: Model[] = [
   // OpenAI
+  { id: 'o3', name: 'o3', provider: 'OpenAI', apiKeyRequired: true },
+  { id: 'gpt-4.1-preview', name: 'GPT-4.1 Preview', provider: 'OpenAI', apiKeyRequired: true },
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'OpenAI', apiKeyRequired: true },
+  { id: 'gpt-4o', name: 'GPT-4o', provider: 'OpenAI', apiKeyRequired: true },
   { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', provider: 'OpenAI', apiKeyRequired: true },
   { id: 'gpt-4', name: 'GPT-4', provider: 'OpenAI', apiKeyRequired: true },
   { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'OpenAI', apiKeyRequired: true },
