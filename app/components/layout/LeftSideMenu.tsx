@@ -68,8 +68,10 @@ export default function LeftSideMenu() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
-  const [unsavedGlobalSystemPrompt, setUnsavedGlobalSystemPrompt] = useState(globalSystemPrompt);
-  const [lastAppliedPromptForSession, setLastAppliedPromptForSession] = useState<string | undefined>(undefined);
+  const [unsavedGlobalSystemPrompt, setUnsavedGlobalSystemPrompt] =
+    useState(globalSystemPrompt);
+  const [lastAppliedPromptForSession, setLastAppliedPromptForSession] =
+    useState<string | undefined>(undefined);
 
   React.useEffect(() => {
     setMounted(true);
@@ -86,13 +88,13 @@ export default function LeftSideMenu() {
 
   useEffect(() => {
     if (activeSession) {
-        setLastAppliedPromptForSession(activeSession.systemPrompt);
+      setLastAppliedPromptForSession(activeSession.systemPrompt);
     } else {
-        setLastAppliedPromptForSession(undefined);
+      setLastAppliedPromptForSession(undefined);
     }
   }, [activeSession, activeChatSessionId]);
 
-  const isPromptDirty = activeChatSessionId 
+  const isPromptDirty = activeChatSessionId
     ? unsavedGlobalSystemPrompt !== lastAppliedPromptForSession
     : unsavedGlobalSystemPrompt !== globalSystemPrompt;
 
@@ -156,7 +158,11 @@ export default function LeftSideMenu() {
       <div className="flex items-center justify-between mb-1 absolute top-3 left-3 right-3 z-20">
         {!isMenuCollapsed && (
           <div className="flex items-center">
-            <FilePreview src="/logo.svg" alt="Omnichat Logo" className="w-8 h-8 mr-2" />
+            <FilePreview
+              src="/logo.svg"
+              alt="Omnichat Logo"
+              className="w-8 h-8 mr-2"
+            />
             <h1 className="text-xl font-semibold pl-1 text-sidebar-foreground">
               Omnichat
             </h1>
@@ -298,31 +304,38 @@ export default function LeftSideMenu() {
                   >
                     Global System Prompt
                   </label>
-                  <div className="relative w-full">
+                  <div className="flex flex-col relative w-full p-1">
                     <Textarea
                       id="system-prompt-input"
                       placeholder="Set a global system prompt..."
                       value={unsavedGlobalSystemPrompt}
-                      onChange={(e) => setUnsavedGlobalSystemPrompt(e.target.value)}
-                      className="w-full min-h-[80px] bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/50 focus:ring-sidebar-ring focus:border-sidebar-ring no-scrollbar !text-xs pr-10 pb-2"
+                      onChange={(e) =>
+                        setUnsavedGlobalSystemPrompt(e.target.value)
+                      }
+                      className="w-full min-h-[80px] bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/50 focus-visible:ring-sidebar-ring/50 focus-visible:border-sidebar-ring focus-visible:ring-[2px] no-scrollbar !text-xs"
                       rows={5}
                     />
-                    <div className="absolute bottom-1 right-1 flex items-center space-x-1">
+                    <div className="flex justify-end items-center space-x-1 mt-2">
                       {isPromptDirty ? (
                         <>
                           <Button
                             onClick={handleApplyGlobalSystemPrompt}
                             variant="ghost"
-                            size="sm" 
+                            size="sm"
                             className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/70 h-auto px-1.5 py-0.5 text-xs flex items-center"
                             aria-label="Apply unsaved system prompt"
                           >
                             <Check size={14} className="mr-1" /> Apply
                           </Button>
                           <Button
-                            onClick={() => setUnsavedGlobalSystemPrompt(lastAppliedPromptForSession || globalSystemPrompt)}
+                            onClick={() =>
+                              setUnsavedGlobalSystemPrompt(
+                                lastAppliedPromptForSession ||
+                                  globalSystemPrompt
+                              )
+                            }
                             variant="ghost"
-                            size="sm" 
+                            size="sm"
                             className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent/70 h-auto px-1.5 py-0.5 text-xs flex items-center"
                             aria-label="Undo changes to system prompt"
                           >
@@ -331,7 +344,8 @@ export default function LeftSideMenu() {
                         </>
                       ) : (
                         <div className="text-xs text-sidebar-foreground/60 flex items-center px-1.5 py-0.5">
-                          <Check size={14} className="mr-1 text-green-500" /> Applied
+                          <Check size={14} className="mr-1 text-green-500" />{" "}
+                          Applied
                         </div>
                       )}
                     </div>

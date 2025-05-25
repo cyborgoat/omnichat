@@ -37,8 +37,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Client-side only API key handling
 - No server-side data persistence
 
+## [1.1.0] - 2025-05-25
+
+### Added
+- **QwQ Deep Thinking Models**: Support for Qwen's QwQ reasoning models with deep thinking capabilities
+- **Qwen3 Models**: Latest Qwen3 Plus and Turbo models with enhanced reasoning abilities
+- **DeepSeek-R1**: DeepSeek-R1 deep thinking model via Alibaba Cloud Dashscope
+- **Enhanced API Handler**: Updated Qwen handler to support both traditional and deep thinking models
+- **OpenAI-Compatible Endpoint**: Seamless integration with Dashscope's OpenAI-compatible API for QwQ models
+
+### Technical Improvements
+- Dual API endpoint support for Qwen models (traditional Dashscope and OpenAI-compatible)
+- Automatic model detection for deep thinking capabilities
+- Enhanced streaming support for reasoning models
+- Improved error handling for different API endpoints
+
 ## [Unreleased]
 - Additional AI provider integrations
 - Enhanced chat export functionality
 - Plugin system for custom AI models
-- Advanced prompt templates 
+- Advanced prompt templates
+- Separate thinking process visualization 

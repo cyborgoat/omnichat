@@ -1,25 +1,116 @@
 "use client"; // Required for useState and event handlers
 
 import {v4 as uuidv4} from "uuid";
-import {useEffect, useRef} from "react";
+import {useEffect, useRef, useCallback, useState} from "react";
 import MessageList from "../chat/MessageList";
 import ChatInput from "../chat/ChatInput";
 import {Message, useActiveChatSession, useChatStore,} from "@/app/store/chatStore";
 import {WelcomeScreen} from "../chat/WelcomeScreen";
 import { API_ENDPOINTS } from "@/app/constants";
+import { Button } from "@/components/ui/button";
+import { ChevronDown } from "lucide-react";
 
 export default function ChatScreen() {
   const store = useChatStore(); // Get the whole store for easier access to multiple states/actions
   const activeSession = useActiveChatSession();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastScrollTimeRef = useRef<number>(0);
+  const userScrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isUserScrolling, setIsUserScrolling] = useState(false);
+  const [isUserActivelyScrolling, setIsUserActivelyScrolling] = useState(false);
   
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
+  const scrollToBottom = useCallback((force = false) => {
+    if (!messagesEndRef.current || (!force && (isUserScrolling || isUserActivelyScrolling))) return;
+    
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    // Check if user is near the bottom (within 100px)
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    
+    if (force || isNearBottom) {
+      // Simple smooth scroll to bottom
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: "smooth", 
+        block: "nearest"
+      });
+    }
+  }, [isUserScrolling, isUserActivelyScrolling]);
 
+  // Debounced scroll function for streaming content
+  const debouncedScrollToBottom = useCallback(() => {
+    const now = Date.now();
+    const timeSinceLastScroll = now - lastScrollTimeRef.current;
+    
+    // Clear existing timeout
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+    }
+    
+    // If it's been more than 1 second since last scroll, scroll immediately
+    if (timeSinceLastScroll > 1000) {
+      scrollToBottom();
+      lastScrollTimeRef.current = now;
+    } else {
+      // Otherwise, debounce the scroll
+      scrollTimeoutRef.current = setTimeout(() => {
+        scrollToBottom();
+        lastScrollTimeRef.current = Date.now();
+      }, 500); // Wait 500ms before scrolling
+    }
+  }, [scrollToBottom]);
+
+  // Handle user scroll detection
+  const handleScroll = useCallback(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    
+    // Set user as actively scrolling
+    setIsUserActivelyScrolling(true);
+    
+    // Clear the active scrolling timeout and set a new one
+    if (userScrollTimeoutRef.current) {
+      clearTimeout(userScrollTimeoutRef.current);
+    }
+    userScrollTimeoutRef.current = setTimeout(() => {
+      setIsUserActivelyScrolling(false);
+    }, 150); // User stops being "actively scrolling" after 150ms of no scroll events
+    
+    // Check if user is at the bottom (within 100px threshold for more tolerance)
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    setIsUserScrolling(!isAtBottom);
+    
+    // Clear any pending auto-scroll if user is actively scrolling away from bottom
+    if (!isAtBottom && scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current);
+      scrollTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Effect for handling message changes during streaming
   useEffect(() => {
-    scrollToBottom();
-  }, [activeSession?.messages, store.isBotThinking]);
+    if (store.isBotThinking || (activeSession?.messages.some(msg => msg.type === "message" && msg.isStreaming))) {
+      // During streaming, use debounced scroll (only if user is near bottom)
+      debouncedScrollToBottom();
+    } else {
+      // For new messages or when streaming ends, scroll only if user is near bottom
+      scrollToBottom(false); // Don't force scroll
+    }
+  }, [activeSession?.messages, store.isBotThinking, debouncedScrollToBottom, scrollToBottom]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current);
+      }
+      if (userScrollTimeoutRef.current) {
+        clearTimeout(userScrollTimeoutRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (!store.activeChatSessionId && store.chatSessions.length > 0) {
@@ -216,12 +307,15 @@ export default function ChatScreen() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-
-      // let accumulatedText = ""; // Not strictly needed if appending directly
+      let buffer = ""; // Buffer to handle partial thinking markers
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
+          // Process any remaining content in buffer
+          if (buffer) {
+            store.appendMessageContent(currentSessionState.id, botMessageId, buffer);
+          }
           store.setMessageStreamingState(
             currentSessionState.id,
             botMessageId,
@@ -229,11 +323,14 @@ export default function ChatScreen() {
           );
           break;
         }
+        
         const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+        
         // Check for special stream error signal
-        if (chunk.includes("STREAM_ERROR:")) {
+        if (buffer.includes("STREAM_ERROR:")) {
           const errorMessage =
-            chunk.split("STREAM_ERROR:")[1]?.trim() ||
+            buffer.split("STREAM_ERROR:")[1]?.trim() ||
             "Unknown streaming error.";
           console.error("Streaming error from API route:", errorMessage);
           store.updateMessageContent(
@@ -248,17 +345,69 @@ export default function ChatScreen() {
           );
           break;
         }
-        // accumulatedText += chunk; // Not needed if appending directly
-        store.appendMessageContent(currentSessionState.id, botMessageId, chunk);
+        
+        // Process thinking content markers
+        while (buffer.includes("__THINKING_START__") && buffer.includes("__THINKING_END__")) {
+          const startIndex = buffer.indexOf("__THINKING_START__");
+          const endIndex = buffer.indexOf("__THINKING_END__") + "__THINKING_END__".length;
+          
+          // Add content before thinking marker to message
+          if (startIndex > 0) {
+            const beforeThinking = buffer.substring(0, startIndex);
+            store.appendMessageContent(currentSessionState.id, botMessageId, beforeThinking);
+          }
+          
+          // Extract thinking content
+          const thinkingContent = buffer.substring(
+            startIndex + "__THINKING_START__".length,
+            endIndex - "__THINKING_END__".length
+          );
+          
+          if (thinkingContent.trim()) {
+            store.addThinkingStep(currentSessionState.id, botMessageId, thinkingContent.trim());
+          }
+          
+          // Remove processed content from buffer
+          buffer = buffer.substring(endIndex);
+        }
+        
+        // If no more thinking markers, add remaining content to message
+        if (!buffer.includes("__THINKING_START__")) {
+          if (buffer) {
+            store.appendMessageContent(currentSessionState.id, botMessageId, buffer);
+            buffer = "";
+          }
+        }
       }
       const remaining = decoder.decode();
       if (remaining) {
-        // accumulatedText += remaining; // Not needed
-        store.appendMessageContent(
-          currentSessionState.id,
-          botMessageId,
-          remaining
-        );
+        buffer += remaining;
+        // Process any final thinking content
+        while (buffer.includes("__THINKING_START__") && buffer.includes("__THINKING_END__")) {
+          const startIndex = buffer.indexOf("__THINKING_START__");
+          const endIndex = buffer.indexOf("__THINKING_END__") + "__THINKING_END__".length;
+          
+          if (startIndex > 0) {
+            const beforeThinking = buffer.substring(0, startIndex);
+            store.appendMessageContent(currentSessionState.id, botMessageId, beforeThinking);
+          }
+          
+          const thinkingContent = buffer.substring(
+            startIndex + "__THINKING_START__".length,
+            endIndex - "__THINKING_END__".length
+          );
+          
+          if (thinkingContent.trim()) {
+            store.addThinkingStep(currentSessionState.id, botMessageId, thinkingContent.trim());
+          }
+          
+          buffer = buffer.substring(endIndex);
+        }
+        
+        // Add any remaining content
+        if (buffer) {
+          store.appendMessageContent(currentSessionState.id, botMessageId, buffer);
+        }
       }
 
       const finalSessionCheck = useChatStore
@@ -303,11 +452,33 @@ export default function ChatScreen() {
   }
 
   return (
-    <div className="flex-1 flex flex-col h-screen bg-background text-foreground">
-      <div className="flex-grow overflow-y-auto p-4 no-scrollbar">
+    <div className="flex-1 flex flex-col h-screen bg-background text-foreground relative">
+      <div 
+        ref={scrollContainerRef}
+        className="flex-grow overflow-y-auto p-4 no-scrollbar"
+        onScroll={handleScroll}
+      >
         <MessageList messages={activeSession.messages} />
-        <div ref={messagesEndRef} />
+        {/* Scroll anchor for smooth bottom positioning */}
+        <div 
+          ref={messagesEndRef} 
+          className="h-4" 
+          aria-hidden="true"
+        />
       </div>
+      
+      {/* Scroll to bottom button */}
+      {isUserScrolling && (store.isBotThinking || activeSession?.messages.some(msg => msg.type === "message" && msg.isStreaming)) && (
+        <Button
+          onClick={() => scrollToBottom(true)}
+          className="absolute bottom-20 right-6 rounded-full w-12 h-12 shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground z-10 animate-in fade-in-0 slide-in-from-bottom-2 duration-200"
+          size="icon"
+          aria-label="Scroll to bottom"
+        >
+          <ChevronDown size={20} />
+        </Button>
+      )}
+      
       <ChatInput onSendMessage={handleSendMessage} />{" "}
       {/* isSending prop removed as ChatInput gets it from store */}
     </div>

@@ -118,99 +118,197 @@ async function* handleDeepseekRequest(apiKey: string, modelId: string, messages:
   }
 }
 
+// --- Qwen Handler (Updated for QwQ Deep Thinking Models) ---
 async function* handleQwenRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string): AsyncGenerator<string> {
-    const url = `https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation`;
-    const qwenMessages: {role: string, content: string}[] = messages
-        .filter(msg => msg.role !== 'model') 
-        .map(msg => ({ role: msg.role, content: msg.content }));
+    // Check if this is a deep thinking model (QwQ, Qwen3, or DeepSeek-R1)
+    const isDeepThinkingModel = modelId.includes('qwq') || 
+                               modelId.includes('qwen-plus-latest') || 
+                               modelId.includes('qwen-plus-2025') ||
+                               modelId.includes('qwen-turbo-latest') ||
+                               modelId.includes('deepseek-r1');
 
-    if (systemPrompt) {
-        const systemMessageIndex = qwenMessages.findIndex(m => m.role === 'system');
-        if (systemMessageIndex !== -1) qwenMessages.splice(systemMessageIndex, 1);
-        qwenMessages.unshift({ role: 'system', content: systemPrompt });
-    } else {
-        // If systemPrompt is empty or undefined, remove any existing system message
-        const systemMessageIndex = qwenMessages.findIndex(m => m.role === 'system');
-        if (systemMessageIndex !== -1) {
-            qwenMessages.splice(systemMessageIndex, 1);
+    // Use OpenAI-compatible endpoint for QwQ and deep thinking models
+    if (isDeepThinkingModel) {
+        const openaiCompatibleUrl = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions';
+        
+        const qwenMessages: {role: string, content: string}[] = messages
+            .filter(msg => msg.role !== 'model') 
+            .map(msg => ({ role: msg.role, content: msg.content }));
+
+        if (systemPrompt) {
+            const systemMessageIndex = qwenMessages.findIndex(m => m.role === 'system');
+            if (systemMessageIndex !== -1) {
+                qwenMessages[systemMessageIndex].content = systemPrompt;
+            } else {
+                qwenMessages.unshift({ role: 'system', content: systemPrompt });
+            }
         }
-    }
 
-    const payload = {
-        model: modelId, 
-        input: { messages: qwenMessages },
-        parameters: { incremental_output: true } // Enable streaming for Qwen
-    };
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: { 
-            'Content-Type': 'application/json', 
-            'Authorization': `Bearer ${apiKey}`,
-            'X-DashScope-SSE': 'enable' // Required for SSE streaming with Qwen
-        },
-        body: JSON.stringify(payload),
-    });
+        const payload = {
+            model: modelId,
+            messages: qwenMessages,
+            stream: true,
+            // Enable thinking mode for Qwen3 models
+            ...(modelId.includes('qwen-plus-latest') || modelId.includes('qwen-turbo-latest') || modelId.includes('qwen-plus-2025') ? 
+                { enable_thinking: true } : {})
+        };
 
-    if (!response.ok) {
-        const errorBody = await response.text();
-        console.error(`Qwen API request failed: ${response.status} ${errorBody}`);
-        throw new Error(`Qwen API request failed: ${response.status} ${errorBody}`);
-    }
-    
-    if (!response.body) {
-        throw new Error("Qwen response body is null.");
-    }
+        const response = await fetch(openaiCompatibleUrl, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(payload),
+        });
 
-    // Process SSE stream from Qwen
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+        if (!response.ok) {
+            const errorBody = await response.text();
+            console.error(`Qwen OpenAI-compatible API request failed: ${response.status} ${errorBody}`);
+            throw new Error(`Qwen API request failed: ${response.status} ${errorBody}`);
+        }
         
-        buffer += decoder.decode(value, { stream: true });
-        
-        let eolIndex;
-        // Qwen SSE events are separated by double newlines
-        while ((eolIndex = buffer.indexOf('\n\n')) >= 0) { 
-            const eventLines = buffer.substring(0, eolIndex).split('\n');
-            buffer = buffer.substring(eolIndex + 2);
+        if (!response.body) {
+            throw new Error("Qwen response body is null.");
+        }
 
-            for (const line of eventLines) {
-                if (line.startsWith("data:")) {
-                    const dataJson = line.substring(5).trim();
+        // Process OpenAI-compatible SSE stream
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            
+            let eolIndex;
+            while ((eolIndex = buffer.indexOf('\n')) >= 0) {
+                const line = buffer.substring(0, eolIndex);
+                buffer = buffer.substring(eolIndex + 1);
+
+                if (line.startsWith("data: ")) {
+                    const dataJson = line.substring(6).trim();
+                    if (dataJson === "[DONE]") {
+                        return;
+                    }
+                    
                     try {
                         const parsedData = JSON.parse(dataJson);
-                        if (parsedData.output && parsedData.output.text) {
-                            yield parsedData.output.text;
+                        const choice = parsedData.choices?.[0];
+                        
+                        if (choice?.delta?.content) {
+                            yield choice.delta.content;
                         }
-                        // According to Dashscope docs, finish_reason can be in the last event's output.choices[0]
-                        if (parsedData.output && parsedData.output.choices && parsedData.output.choices[0] && parsedData.output.choices[0].finish_reason === "stop") {
-                             return; // Stream finished
+                        
+                        // Handle thinking content for Qwen3 models
+                        if (choice?.delta?.reasoning_content) {
+                            // Include thinking content with a special marker for client-side processing
+                            yield `__THINKING_START__${choice.delta.reasoning_content}__THINKING_END__`;
                         }
-                        // Also check for top-level finish_reason as seen in some non-streaming examples
-                        if (parsedData.output && parsedData.output.finish_reason === "stop") {
-                            return; // Stream finished
+                        
+                        if (choice?.finish_reason === "stop") {
+                            return;
                         }
                     } catch (e) {
-                        console.error("Error parsing Qwen SSE event:", e, "Event string:", dataJson);
+                        console.error("Error parsing Qwen OpenAI-compatible SSE event:", e, "Event string:", dataJson);
                     }
                 }
             }
         }
-    }
-    // If loop finishes due to reader.done but buffer might have trailing incomplete data
-    if (buffer.startsWith("data:")) { // Check for any remaining data
-        const dataJson = buffer.substring(5).trim();
-        try {
-            const parsedData = JSON.parse(dataJson);
-            if (parsedData.output && parsedData.output.text) {
-                yield parsedData.output.text;
+    } else {
+        // Use original Dashscope API for regular Qwen models
+        const url = `https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation`;
+        const qwenMessages: {role: string, content: string}[] = messages
+            .filter(msg => msg.role !== 'model') 
+            .map(msg => ({ role: msg.role, content: msg.content }));
+
+        if (systemPrompt) {
+            const systemMessageIndex = qwenMessages.findIndex(m => m.role === 'system');
+            if (systemMessageIndex !== -1) qwenMessages.splice(systemMessageIndex, 1);
+            qwenMessages.unshift({ role: 'system', content: systemPrompt });
+        } else {
+            const systemMessageIndex = qwenMessages.findIndex(m => m.role === 'system');
+            if (systemMessageIndex !== -1) {
+                qwenMessages.splice(systemMessageIndex, 1);
             }
-        } catch (e) {
-            console.error("Error parsing Qwen SSE event (final buffer):", e, "Event string:", dataJson);
+        }
+
+        const payload = {
+            model: modelId, 
+            input: { messages: qwenMessages },
+            parameters: { incremental_output: true }
+        };
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${apiKey}`,
+                'X-DashScope-SSE': 'enable'
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const errorBody = await response.text();
+            console.error(`Qwen API request failed: ${response.status} ${errorBody}`);
+            throw new Error(`Qwen API request failed: ${response.status} ${errorBody}`);
+        }
+        
+        if (!response.body) {
+            throw new Error("Qwen response body is null.");
+        }
+
+        // Process SSE stream from Qwen
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            
+            let eolIndex;
+            while ((eolIndex = buffer.indexOf('\n\n')) >= 0) { 
+                const eventLines = buffer.substring(0, eolIndex).split('\n');
+                buffer = buffer.substring(eolIndex + 2);
+
+                for (const line of eventLines) {
+                    if (line.startsWith("data:")) {
+                        const dataJson = line.substring(5).trim();
+                        try {
+                            const parsedData = JSON.parse(dataJson);
+                            if (parsedData.output && parsedData.output.text) {
+                                yield parsedData.output.text;
+                            }
+                            if (parsedData.output && parsedData.output.choices && parsedData.output.choices[0] && parsedData.output.choices[0].finish_reason === "stop") {
+                                 return;
+                            }
+                            if (parsedData.output && parsedData.output.finish_reason === "stop") {
+                                return;
+                            }
+                        } catch (e) {
+                            console.error("Error parsing Qwen SSE event:", e, "Event string:", dataJson);
+                        }
+                    }
+                }
+            }
+        }
+        
+        if (buffer.startsWith("data:")) {
+            const dataJson = buffer.substring(5).trim();
+            try {
+                const parsedData = JSON.parse(dataJson);
+                if (parsedData.output && parsedData.output.text) {
+                    yield parsedData.output.text;
+                }
+            } catch (e) {
+                console.error("Error parsing Qwen SSE event (final buffer):", e, "Event string:", dataJson);
+            }
         }
     }
 }
@@ -315,11 +413,11 @@ export async function POST(req: NextRequest) {
       streamGenerator = handleAnthropicRequest(apiKey, modelId, messages, systemPrompt);
     } else if (modelId.toLowerCase().startsWith('gemini')) {
       streamGenerator = handleGeminiRequest(apiKey, modelId, messages, systemPrompt);
-    } else if (modelId.toLowerCase().startsWith('qwen')) {
+    } else if (modelId.toLowerCase().startsWith('qwen') || modelId.toLowerCase().startsWith('qwq') || modelId.toLowerCase().includes('deepseek-r1')) {
+      // Route all Qwen, QwQ, and DeepSeek-R1 models to the updated Qwen handler
       streamGenerator = handleQwenRequest(apiKey, modelId, messages, systemPrompt);
     } else if (modelId.toLowerCase().startsWith('deepseek')) {
-      // console.warn("Deepseek model routed to Qwen handler. Verify API compatibility for streaming."); // Original warning
-      // TODO: Implement a specific Deepseek streaming handler if its API differs from Qwen's SSE.
+      // Handle regular DeepSeek models (not R1)
       streamGenerator = handleDeepseekRequest(apiKey, modelId, messages, systemPrompt);
     } else {
       return NextResponse.json({ error: `Unsupported model provider for ID: ${modelId}` }, { status: 400 });

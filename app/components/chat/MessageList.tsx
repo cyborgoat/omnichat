@@ -206,14 +206,12 @@ export default function MessageList({ messages }: MessageListProps) {
                           className="border-t border-border pt-1.5"
                         >
                           <AccordionTrigger className="text-muted-foreground hover:no-underline py-1.5 px-0 text-left">
-                            Show Reasoning ({msg.thinkingSteps.length} steps)
+                            Show Reasoning Process
                           </AccordionTrigger>
                           <AccordionContent className="bg-muted p-2.5 rounded-md mt-1.5">
-                            <ul className="list-decimal list-inside space-y-1.5 text-muted-foreground">
-                              {msg.thinkingSteps.map((step, idx) => (
-                                <li key={idx}>{step}</li>
-                              ))}
-                            </ul>
+                            <div className="text-muted-foreground whitespace-pre-wrap text-xs leading-relaxed">
+                              {msg.thinkingSteps.join('')}
+                            </div>
                           </AccordionContent>
                         </AccordionItem>
                       </Accordion>

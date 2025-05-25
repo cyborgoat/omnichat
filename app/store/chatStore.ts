@@ -17,7 +17,7 @@ export interface Message {
   text: string;
   sender: "user" | "bot";
   timestamp: string;
-  thinkingSteps?: string[];
+  thinkingSteps?: string[]; // Contains reasoning content chunks
   isStreaming?: boolean; // Added for stream handling
   // We can add more fields like 'metadata' for images or files, or error states
 }
@@ -73,6 +73,7 @@ export interface ChatState extends PersistedChatState {
   addMessageToSession: (sessionId: string, message: Message) => void;
   updateMessageContent: (sessionId: string, messageId: string, newContent: string) => void;
   appendMessageContent: (sessionId: string, messageId: string, contentChunk: string) => void;
+  addThinkingStep: (sessionId: string, messageId: string, thinkingContent: string) => void;
   setMessageStreamingState: (sessionId: string, messageId: string, isStreaming: boolean) => void;
   setBotThinking: (isThinking: boolean) => void;
   setSendingMessage: (isSending: boolean) => void;
@@ -98,6 +99,15 @@ const initialModels: Model[] = [
   { id: 'qwen-turbo', name: 'Qwen Turbo', provider: 'Qwen', apiKeyRequired: true }, // Tongyi Qwen Turbo
   { id: 'qwen-plus', name: 'Qwen Plus', provider: 'Qwen', apiKeyRequired: true },  // Tongyi Qwen Plus
   { id: 'qwen-max', name: 'Qwen Max', provider: 'Qwen', apiKeyRequired: true },    // Tongyi Qwen Max
+  // Qwen3 Deep Thinking Models
+  { id: 'qwen-plus-latest', name: 'Qwen3 Plus (Latest)', provider: 'Qwen', apiKeyRequired: true }, // Qwen3 with thinking
+  { id: 'qwen-plus-2025-04-28', name: 'Qwen3 Plus (0428)', provider: 'Qwen', apiKeyRequired: true }, // Qwen3 snapshot
+  { id: 'qwen-turbo-latest', name: 'Qwen3 Turbo (Latest)', provider: 'Qwen', apiKeyRequired: true }, // Qwen3 Turbo with thinking
+  // QwQ Deep Thinking Models
+  { id: 'qwq-plus', name: 'QwQ Plus (Deep Thinking)', provider: 'Qwen', apiKeyRequired: true }, // QwQ reasoning model
+  { id: 'qwq-32b-preview', name: 'QwQ 32B Preview', provider: 'Qwen', apiKeyRequired: true }, // QwQ 32B model
+  // DeepSeek-R1 Deep Thinking
+  { id: 'deepseek-r1', name: 'DeepSeek-R1 (Deep Thinking)', provider: 'Qwen', apiKeyRequired: true }, // DeepSeek-R1 via Dashscope
 ];
 
 export const useChatStore = create<ChatState>()(
@@ -236,6 +246,26 @@ export const useChatStore = create<ChatState>()(
                   messages: s.messages.map(item =>
                     item.id === messageId && item.type === "message"
                       ? { ...item, text: item.text + contentChunk, isStreaming: true }
+                      : item
+                  ),
+                }
+              : s
+          ),
+        }));
+      },
+
+      addThinkingStep: (sessionId, messageId, thinkingContent) => {
+        set((state) => ({
+          chatSessions: state.chatSessions.map(s =>
+            s.id === sessionId
+              ? {
+                  ...s,
+                  messages: s.messages.map(item =>
+                    item.id === messageId && item.type === "message"
+                      ? { 
+                          ...item, 
+                          thinkingSteps: [...(item.thinkingSteps || []), thinkingContent]
+                        }
                       : item
                   ),
                 }

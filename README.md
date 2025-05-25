@@ -44,7 +44,7 @@ Omnichat is a versatile chat application that allows you to interact with variou
 - **Google Gemini**: Gemini 1.5 Pro, Gemini 1.0 Pro
 - **Anthropic Claude**: Claude 3 Opus, Sonnet, and Haiku
 - **Deepseek**: DeepSeek Chat and Coder models
-- **Alibaba Qwen**: Qwen Turbo, Plus, and Max (via Dashscope)
+- **Alibaba Qwen**: Qwen Turbo, Plus, Max, and QwQ Deep Thinking models (via Dashscope)
 - **Extensible Architecture**: Easy to add new providers
 
 ### 🎨 **Modern UI/UX**
