@@ -35,7 +35,7 @@ export function SettingsDialog({ isMenuCollapsed }: SettingsDialogProps) {
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Manage your application settings. Click save when you're done.
+            Manage your application settings. Click save when you&apos;re done.
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="profile" className="w-full">

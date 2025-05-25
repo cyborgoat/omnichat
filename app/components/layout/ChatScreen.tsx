@@ -118,7 +118,7 @@ export default function ChatScreen() {
 
     const apiKey = store.apiKeys[currentModel.provider];
     if (currentModel.apiKeyRequired && !apiKey) {
-      const errorText = `Error: API key for ${currentModel.provider} is missing. Please set it in the menu.`;
+      const errorText = `Error: API key for ${currentModel.provider} is missing. Please set it in the settings.`;
       store.updateMessageContent(
         currentSessionState.id,
         botMessageId,

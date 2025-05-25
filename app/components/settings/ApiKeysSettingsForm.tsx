@@ -22,7 +22,7 @@ import { toast } from "sonner";
 const apiKeySchema = z.object({
   OpenAI: z.string().optional(),
   Google: z.string().optional(), // For Gemini models
-  Qwen: z.string().optional(),   // For Dashscope/Qwen models
+  Qwen: z.string().optional(), // For Dashscope/Qwen models
   Deepseek: z.string().optional(), // For Deepseek models
   Anthropic: z.string().optional(), // Added Anthropic for completeness
 });
@@ -31,7 +31,9 @@ type ApiKeyFormValues = z.infer<typeof apiKeySchema>;
 
 export function ApiKeysSettingsForm() {
   const { apiKeys, setApiKey } = useChatStore();
-  const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>({});
+  const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>(
+    {}
+  );
 
   const apiKeyForm = useForm<ApiKeyFormValues>({
     resolver: zodResolver(apiKeySchema),
@@ -57,22 +59,49 @@ export function ApiKeysSettingsForm() {
   }
 
   const toggleVisibility = (fieldName: keyof ApiKeyFormValues) => {
-    setVisibleFields(prev => ({ ...prev, [fieldName]: !prev[fieldName] }));
+    setVisibleFields((prev) => ({ ...prev, [fieldName]: !prev[fieldName] }));
   };
 
   // Update apiKeyFields to use correct provider names and labels
-  const apiKeyFields: { name: keyof ApiKeyFormValues; label: string; description: string }[] = [
-    { name: "OpenAI", label: "OpenAI API Key", description: "Enter your OpenAI API Key." },
-    { name: "Google", label: "Google (Gemini) API Key", description: "Enter your Google Gemini API Key." },
-    { name: "Qwen", label: "Qwen (Dashscope) API Key", description: "Enter your Alibaba Cloud Qwen/Dashscope API Key." },
-    { name: "Deepseek", label: "Deepseek API Key", description: "Enter your Deepseek API Key." },
-    { name: "Anthropic", label: "Anthropic API Key", description: "Enter your Anthropic API Key." },
+  const apiKeyFields: {
+    name: keyof ApiKeyFormValues;
+    label: string;
+    description: string;
+  }[] = [
+    {
+      name: "OpenAI",
+      label: "OpenAI API Key",
+      description: "Enter your OpenAI API Key.",
+    },
+    {
+      name: "Google",
+      label: "Google (Gemini) API Key",
+      description: "Enter your Google Gemini API Key.",
+    },
+    {
+      name: "Qwen",
+      label: "Qwen (Dashscope) API Key",
+      description: "Enter your Alibaba Cloud Qwen/Dashscope API Key.",
+    },
+    {
+      name: "Deepseek",
+      label: "Deepseek API Key",
+      description: "Enter your Deepseek API Key.",
+    },
+    {
+      name: "Anthropic",
+      label: "Anthropic API Key",
+      description: "Enter your Anthropic API Key.",
+    },
   ];
 
   return (
     <Form {...apiKeyForm}>
-      <form onSubmit={apiKeyForm.handleSubmit(onApiKeySubmit)} className="space-y-4 py-4">
-        <h3 className="text-lg font-medium">API Key Management</h3>
+      <form
+        onSubmit={apiKeyForm.handleSubmit(onApiKeySubmit)}
+        className="space-y-4"
+      >
+        <h3 className="text-md font-medium">API Key Management</h3>
         {apiKeyFields.map((item) => (
           <FormField
             key={item.name}
@@ -80,28 +109,40 @@ export function ApiKeysSettingsForm() {
             name={item.name}
             render={({ field }) => (
               <FormItem>
-                <FormLabel>{item.label}</FormLabel>
-                <div className="flex items-center space-x-2 space-y-4">
+                <FormLabel className="text-xs mb-0.5">{item.label}</FormLabel>
+                <div className="flex items-center space-x-2">
                   <FormControl>
-                    <Input 
-                      type={visibleFields[item.name] ? "text" : "password"} 
-                      placeholder={`Enter your ${item.label}`} {...field} 
-                      value={field.value || ""} />
+                    <Input
+                      type={visibleFields[item.name] ? "text" : "password"}
+                      placeholder={`Enter your ${item.label}`}
+                      {...field}
+                      value={field.value || ""}
+                      className="h-6 placeholder:opacity-60 !text-xs"
+                    />
                   </FormControl>
-                  <Button type="button" variant="ghost" size="icon" onClick={() => toggleVisibility(item.name)} className="h-9 w-9 flex-shrink-0">
-                    {visibleFields[item.name] ? <EyeOff size={18} /> : <Eye size={18} />}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => toggleVisibility(item.name)}
+                    className="h-9 w-9 flex-shrink-0"
+                  >
+                    {visibleFields[item.name] ? (
+                      <EyeOff size={18} />
+                    ) : (
+                      <Eye size={18} />
+                    )}
                   </Button>
                 </div>
-                {/* <FormDescription>{item.description}</FormDescription> */}
-                <FormMessage />
+                <FormMessage className="text-xs" />
               </FormItem>
             )}
           />
         ))}
-        <Button type="submit">Save API Keys</Button>
+        <Button type="submit" className="text-xs">Save API Keys</Button>
       </form>
     </Form>
   );
 }
 
-export default ApiKeysSettingsForm; 
+export default ApiKeysSettingsForm;

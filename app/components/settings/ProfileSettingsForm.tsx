@@ -24,12 +24,7 @@ const profileSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
 
-interface ProfileSettingsFormProps {
-  // Define any props needed, e.g., for loading initial data or handling submission
-  // For now, we'll manage state internally and use localStorage
-}
-
-export function ProfileSettingsForm({}: ProfileSettingsFormProps) {
+export function ProfileSettingsForm() {
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
@@ -64,17 +59,17 @@ export function ProfileSettingsForm({}: ProfileSettingsFormProps) {
   return (
     <Form {...profileForm}>
       <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4 py-4">
-        <h3 className="text-lg font-medium">Profile Settings</h3>
+        <h3 className="text-md font-medium">Profile Settings</h3>
         <FormField
           control={profileForm.control}
           name="username"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Username</FormLabel>
+              <FormLabel className="text-xs mb-0.5">Username</FormLabel>
               <FormControl>
-                <Input placeholder="Your username" {...field} value={field.value || ""} />
+                <Input placeholder="Your username" {...field} value={field.value || ""} className="text-xs placeholder:opacity-60 h-8 px-2 py-1" />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-xs" />
             </FormItem>
           )}
         />
@@ -83,15 +78,15 @@ export function ProfileSettingsForm({}: ProfileSettingsFormProps) {
           name="avatar"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Avatar URL</FormLabel>
+              <FormLabel className="text-xs mb-0.5">Avatar URL</FormLabel>
               <FormControl>
-                <Input placeholder="URL to your avatar" {...field} value={field.value || ""} />
+                <Input placeholder="URL to your avatar" {...field} value={field.value || ""} className="text-xs placeholder:opacity-60 h-8 px-2 py-1" />
               </FormControl>
-              <FormMessage />
+              <FormMessage className="text-xs" />
             </FormItem>
           )}
         />
-        <Button type="submit">Save Profile</Button>
+        <Button type="submit" className="text-xs">Save Profile</Button>
       </form>
     </Form>
   );
