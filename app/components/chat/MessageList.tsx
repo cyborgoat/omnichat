@@ -113,7 +113,7 @@ export default function MessageList({ messages }: MessageListProps) {
         <FilePreview
           src="/logo.svg"
           alt="Omnichat Logo"
-          className="w-8 h-8 mr-2"
+          className="w-12 h-12 mb-4 flex-shrink-0"
         />
         <p className="text-muted-foreground">
           No messages yet. Send a message to start the conversation!
