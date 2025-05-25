@@ -14,7 +14,7 @@ import {
   X as XIcon,
   Eraser,
 } from "lucide-react";
-import { Model, useChatStore } from "@/app/store/chatStore";
+import { Model, useChatStore, useEnabledModels } from "@/app/store/chatStore";
 import {
   Select,
   SelectContent,
@@ -44,7 +44,6 @@ export default function LeftSideMenu() {
   const {
     isMenuCollapsed,
     toggleMenu,
-    availableModels,
     selectedModelId,
     selectModel,
     chatSessions,
@@ -58,6 +57,8 @@ export default function LeftSideMenu() {
     addSystemMessageToActiveChat,
     updateSessionSystemPrompt,
   } = useChatStore();
+
+  const enabledModels = useEnabledModels(); // Get only enabled models
 
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [sessionNewName, setSessionNewName] = useState("");
@@ -109,11 +110,11 @@ export default function LeftSideMenu() {
   };
 
   const groupedModels = useMemo(() => {
-    return availableModels.reduce((acc, model) => {
+    return enabledModels.reduce((acc, model) => {
       (acc[model.provider] = acc[model.provider] || []).push(model);
       return acc;
     }, {} as Record<string, Model[]>);
-  }, [availableModels]);
+  }, [enabledModels]);
 
   const handleRenameSession = () => {
     if (editingSessionId && sessionNewName.trim()) {
@@ -370,22 +371,28 @@ export default function LeftSideMenu() {
                       <SelectValue placeholder="Choose a model" />
                     </SelectTrigger>
                     <SelectContent className="bg-sidebar text-sidebar-foreground border-sidebar-border max-h-60 overflow-y-auto">
-                      {Object.entries(groupedModels).map(
-                        ([providerName, modelsInGroup]) => (
-                          <SelectGroup key={providerName}>
-                            <SelectLabel className="text-sidebar-foreground/70 text-sm font-bold">
-                              {providerName}
-                            </SelectLabel>
-                            {modelsInGroup.map((model) => (
-                              <SelectItem
-                                key={model.id}
-                                value={model.id}
-                                className="hover:bg-sidebar-accent focus:bg-sidebar-accent data-[highlighted]:bg-sidebar-accent data-[state=checked]:bg-sidebar-accent/80 text-xs"
-                              >
-                                {model.name}
-                              </SelectItem>
-                            ))}
-                          </SelectGroup>
+                      {enabledModels.length === 0 ? (
+                        <div className="p-2 text-xs text-sidebar-foreground/60">
+                          No models enabled. Please enable models in Settings → Models.
+                        </div>
+                      ) : (
+                        Object.entries(groupedModels).map(
+                          ([providerName, modelsInGroup]) => (
+                            <SelectGroup key={providerName}>
+                              <SelectLabel className="text-sidebar-foreground/70 text-sm font-bold">
+                                {providerName}
+                              </SelectLabel>
+                              {modelsInGroup.map((model) => (
+                                <SelectItem
+                                  key={model.id}
+                                  value={model.id}
+                                  className="hover:bg-sidebar-accent focus:bg-sidebar-accent data-[highlighted]:bg-sidebar-accent data-[state=checked]:bg-sidebar-accent/80 text-xs"
+                                >
+                                  {model.name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          )
                         )
                       )}
                     </SelectContent>

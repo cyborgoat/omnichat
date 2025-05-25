@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ProfileSettingsForm } from "./ProfileSettingsForm"; // Import new component
+import { ModelsSettingsForm } from "./ModelsSettingsForm"; // Import models settings component
 import { ApiKeysSettingsForm } from "./ApiKeysSettingsForm"; // Import new component
 import { ProxySettingsForm } from "./ProxySettingsForm"; // Import proxy settings component
 import { SettingsIcon } from "lucide-react"; // Import SettingsIcon
@@ -39,14 +39,14 @@ export function SettingsDialog({ isMenuCollapsed }: SettingsDialogProps) {
             Manage your application settings. Click save when you&apos;re done.
           </DialogDescription>
         </DialogHeader>
-        <Tabs defaultValue="profile" className="w-full">
+        <Tabs defaultValue="models" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
+            <TabsTrigger value="models">Models</TabsTrigger>
             <TabsTrigger value="apiKeys">API Keys</TabsTrigger>
             <TabsTrigger value="proxy">Proxy</TabsTrigger>
           </TabsList>
-          <TabsContent value="profile">
-            <ProfileSettingsForm />
+          <TabsContent value="models">
+            <ModelsSettingsForm />
           </TabsContent>
           <TabsContent value="apiKeys">
             <ApiKeysSettingsForm />

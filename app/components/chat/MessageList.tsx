@@ -179,7 +179,7 @@ export default function MessageList({ messages }: MessageListProps) {
                       <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-75"></div>
                       <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-150"></div>
                       <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-300"></div>
-                      <span className="text-xs">Assistant is typing...</span>
+                      <span className="text-xs">Working on it...</span>
                     </div>
                   )}
                   {msg.sender === "bot" ? (
@@ -210,7 +210,7 @@ export default function MessageList({ messages }: MessageListProps) {
                           </AccordionTrigger>
                           <AccordionContent className="bg-muted p-2.5 rounded-md mt-1.5">
                             <div className="text-muted-foreground whitespace-pre-wrap text-xs leading-relaxed">
-                              {msg.thinkingSteps.join('')}
+                              {msg.thinkingSteps.join("")}
                             </div>
                           </AccordionContent>
                         </AccordionItem>

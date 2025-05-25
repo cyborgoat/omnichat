@@ -55,6 +55,7 @@ export interface ProxySettings {
 interface PersistedChatState {
   isMenuCollapsed: boolean;
   availableModels: Model[]; // Assuming models list can change or be configured by user later
+  enabledModelIds: string[]; // Track which models are enabled for display
   selectedModelId: string | null;
   apiKeys: ApiKeys;
   proxySettings: ProxySettings;
@@ -74,6 +75,7 @@ export interface ChatState extends PersistedChatState {
   setApiKey: (provider: string, key: string) => void;
   setProxySettings: (settings: ProxySettings) => void;
   setGlobalSystemPrompt: (prompt: string) => void;
+  setEnabledModels: (modelIds: string[]) => void;
   createNewChatSession: (modelId?: string, name?: string) => string; 
   setActiveChatSession: (sessionId: string) => void;
   deleteChatSession: (sessionId: string) => void;
@@ -129,6 +131,7 @@ export const useChatStore = create<ChatState>()(
       // Initial Persisted State
       isMenuCollapsed: false,
       availableModels: initialModels,
+      enabledModelIds: initialModels.map(m => m.id), // Initially all models are enabled
       selectedModelId: initialModels[0]?.id || null,
       apiKeys: {},
       proxySettings: {},
@@ -160,6 +163,7 @@ export const useChatStore = create<ChatState>()(
       setApiKey: (provider, key) => set((state) => ({ apiKeys: { ...state.apiKeys, [provider]: key } })),
       setProxySettings: (settings) => set({ proxySettings: settings }),
       setGlobalSystemPrompt: (prompt) => set({ globalSystemPrompt: prompt }),
+      setEnabledModels: (modelIds) => set({ enabledModelIds: modelIds }),
 
       createNewChatSession: (modelIdToUse, name) => {
         const newSessionId = uuidv4(); // Use uuidv4 to generate a unique ID
@@ -377,4 +381,11 @@ export const useCurrentModelApiKey = () => {
         return apiKeys[model.provider];
     }
     return undefined;
+};
+
+// Hook to get enabled models only
+export const useEnabledModels = () => {
+  const availableModels = useChatStore(state => state.availableModels);
+  const enabledModelIds = useChatStore(state => state.enabledModelIds);
+  return availableModels.filter(model => enabledModelIds.includes(model.id));
 }; 

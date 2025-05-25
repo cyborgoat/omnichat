@@ -16,50 +16,37 @@ export default function ChatScreen() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastScrollTimeRef = useRef<number>(0);
   const userScrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isUserScrolling, setIsUserScrolling] = useState(false);
   const [isUserActivelyScrolling, setIsUserActivelyScrolling] = useState(false);
+  const prevMessageCountRef = useRef<number | undefined>(activeSession?.messages.length);
   
   const scrollToBottom = useCallback((force = false) => {
-    if (!messagesEndRef.current || (!force && (isUserScrolling || isUserActivelyScrolling))) return;
-    
+    if (!messagesEndRef.current) return;
     const container = scrollContainerRef.current;
     if (!container) return;
-    
-    // Check if user is near the bottom (within 100px)
-    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
-    
-    if (force || isNearBottom) {
-      // Simple smooth scroll to bottom
-      messagesEndRef.current.scrollIntoView({ 
-        behavior: "smooth", 
-        block: "nearest"
-      });
-    }
-  }, [isUserScrolling, isUserActivelyScrolling]);
 
-  // Debounced scroll function for streaming content
-  const debouncedScrollToBottom = useCallback(() => {
-    const now = Date.now();
-    const timeSinceLastScroll = now - lastScrollTimeRef.current;
-    
+    if (force) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+    } else {
+      const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
+      if (isNearBottom && !isUserActivelyScrolling) {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+      }
+    }
+  }, [isUserActivelyScrolling]);
+
+  // Simplified scroll function for streaming content
+  const scrollToBottomIfNeeded = useCallback(() => {
     // Clear existing timeout
     if (scrollTimeoutRef.current) {
       clearTimeout(scrollTimeoutRef.current);
     }
     
-    // If it's been more than 1 second since last scroll, scroll immediately
-    if (timeSinceLastScroll > 1000) {
+    // Use a shorter delay for more responsive scrolling during streaming
+    scrollTimeoutRef.current = setTimeout(() => {
       scrollToBottom();
-      lastScrollTimeRef.current = now;
-    } else {
-      // Otherwise, debounce the scroll
-      scrollTimeoutRef.current = setTimeout(() => {
-        scrollToBottom();
-        lastScrollTimeRef.current = Date.now();
-      }, 500); // Wait 500ms before scrolling
-    }
+    }, 100); // Much shorter delay for better responsiveness
   }, [scrollToBottom]);
 
   // Handle user scroll detection
@@ -76,10 +63,10 @@ export default function ChatScreen() {
     }
     userScrollTimeoutRef.current = setTimeout(() => {
       setIsUserActivelyScrolling(false);
-    }, 150); // User stops being "actively scrolling" after 150ms of no scroll events
+    }, 200); // User stops being "actively scrolling" after 200ms of no scroll events
     
-    // Check if user is at the bottom (within 100px threshold for more tolerance)
-    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+    // Check if user is at the bottom (within 150px threshold for more tolerance)
+    const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 150;
     setIsUserScrolling(!isAtBottom);
     
     // Clear any pending auto-scroll if user is actively scrolling away from bottom
@@ -89,16 +76,33 @@ export default function ChatScreen() {
     }
   }, []);
 
-  // Effect for handling message changes during streaming
+  // Consolidated useEffect for auto-scrolling
   useEffect(() => {
-    if (store.isBotThinking || (activeSession?.messages.some(msg => msg.type === "message" && msg.isStreaming))) {
-      // During streaming, use debounced scroll (only if user is near bottom)
-      debouncedScrollToBottom();
-    } else {
-      // For new messages or when streaming ends, scroll only if user is near bottom
-      scrollToBottom(false); // Don't force scroll
+    const lastMessage = activeSession?.messages[activeSession.messages.length - 1];
+    const isStreaming = lastMessage?.type === "message" && lastMessage.isStreaming;
+
+    let isNewMessageAdded = false;
+    if (activeSession && prevMessageCountRef.current !== activeSession.messages.length) {
+      isNewMessageAdded = true;
     }
-  }, [activeSession?.messages, store.isBotThinking, debouncedScrollToBottom, scrollToBottom]);
+
+    if (isNewMessageAdded) {
+      // New message added (user sent or bot placeholder created), force scroll after a tiny delay for DOM
+      setTimeout(() => scrollToBottom(true), 0); 
+    } else if (isStreaming && store.isBotThinking) {
+      // Content is actively streaming into an existing message bubble
+      scrollToBottomIfNeeded();
+    } else if (!isStreaming && !store.isBotThinking) {
+      // Streaming just ended or a message was fully received without streaming initially
+      // Ensure it scrolls if near bottom, but don't force if user scrolled up.
+      setTimeout(() => scrollToBottom(false), 50); 
+    }
+
+    // Update the ref *after* comparison for the next render
+    if (activeSession) {
+      prevMessageCountRef.current = activeSession.messages.length;
+    }
+  }, [activeSession?.messages, store.isBotThinking, scrollToBottom, scrollToBottomIfNeeded]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -456,7 +460,7 @@ export default function ChatScreen() {
     <div className="flex-1 flex flex-col h-screen bg-background text-foreground relative">
       <div 
         ref={scrollContainerRef}
-        className="flex-grow overflow-y-auto p-4 no-scrollbar"
+        className="flex-grow overflow-y-auto p-4 pb-8 no-scrollbar"
         onScroll={handleScroll}
       >
         <MessageList messages={activeSession.messages} />

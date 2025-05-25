@@ -21,11 +21,6 @@ export interface ApiErrorResponse {
 }
 
 // Form validation types
-export interface ProfileFormData {
-  username?: string;
-  avatar?: string;
-}
-
 export interface ApiKeyFormData {
   OpenAI?: string;
   Google?: string;

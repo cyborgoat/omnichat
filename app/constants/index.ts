@@ -19,8 +19,6 @@ export const SIDEBAR_COLLAPSED_WIDTH = 60;
 
 // Local storage keys
 export const STORAGE_KEYS = {
-  PROFILE_USERNAME: "profileUsername",
-  PROFILE_AVATAR: "profileAvatar",
   PROXY_HTTP: "proxyHttp",
   PROXY_HTTPS: "proxyHttps", 
   PROXY_SOCKS: "proxySocks",
