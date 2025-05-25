@@ -2,7 +2,7 @@
 
 import {useChatStore} from "@/app/store/chatStore";
 import {Button} from "@/components/ui/button";
-import {MessageSquarePlus} from "lucide-react";
+import {FilePreview} from "../ui/file-preview";
 
 export function WelcomeScreen() {
   const createNewChatSession = useChatStore((state) => state.createNewChatSession);
@@ -16,7 +16,7 @@ export function WelcomeScreen() {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center h-full bg-background p-8 text-center">
-      <MessageSquarePlus size={64} className="text-primary mb-6" />
+      <FilePreview src="/logo.svg" alt="Omnichat Logo" className="w-16 h-16 mb-6" />
       <h1 className="text-3xl font-semibold text-foreground mb-3">
         Welcome to Omnichat
       </h1>

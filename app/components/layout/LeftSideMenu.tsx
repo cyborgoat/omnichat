@@ -38,6 +38,7 @@ import {
 import { useTheme } from "next-themes";
 import SettingsDialog from "../settings/SettingsDialog";
 import { toast } from "sonner";
+import { FilePreview } from "../ui/file-preview";
 
 export default function LeftSideMenu() {
   const {
@@ -154,9 +155,12 @@ export default function LeftSideMenu() {
     >
       <div className="flex items-center justify-between mb-1 absolute top-3 left-3 right-3 z-20">
         {!isMenuCollapsed && (
-          <h1 className="text-xl font-semibold pl-1 text-sidebar-foreground">
-            Omnichat
-          </h1>
+          <div className="flex items-center">
+            <FilePreview src="/logo.svg" alt="Omnichat Logo" className="w-8 h-8 mr-2" />
+            <h1 className="text-xl font-semibold pl-1 text-sidebar-foreground">
+              Omnichat
+            </h1>
+          </div>
         )}
         <div className="flex items-center ml-auto">
           {!isMenuCollapsed && mounted && (

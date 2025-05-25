@@ -1,14 +1,27 @@
-import {Accordion, AccordionContent, AccordionItem, AccordionTrigger,} from "@/components/ui/accordion";
-import {BotMessageSquare, Check, Copy, User} from 'lucide-react';
-import {ChatItem, Message, SystemPromptUpdateEvent} from "@/app/store/chatStore";
-import {AnimatePresence, motion} from 'framer-motion';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
-import {prism as lightTheme, vscDarkPlus} from 'react-syntax-highlighter/dist/esm/styles/prism';
-import {useTheme} from 'next-themes';
-import React, {useEffect, useState} from 'react';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { BotMessageSquare, Check, Copy, User } from "lucide-react";
+import {
+  ChatItem,
+  Message,
+  SystemPromptUpdateEvent,
+} from "@/app/store/chatStore";
+import { AnimatePresence, motion } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import {
+  prism as lightTheme,
+  vscDarkPlus,
+} from "react-syntax-highlighter/dist/esm/styles/prism";
+import { useTheme } from "next-themes";
+import React, { useEffect, useState } from "react";
+import { FilePreview } from "../ui/file-preview";
 
 interface MessageListProps {
   messages: ChatItem[];
@@ -29,8 +42,8 @@ const CodeBlock = ({ inline, className, children }: CodeBlockProps) => {
     setMounted(true);
   }, []);
 
-  const match = /language-(\w+)/.exec(className || '');
-  const codeString = String(children).replace(/\n$/, '');
+  const match = /language-(\w+)/.exec(className || "");
+  const codeString = String(children).replace(/\n$/, "");
 
   const handleCopy = () => {
     navigator.clipboard.writeText(codeString).then(() => {
@@ -50,33 +63,33 @@ const CodeBlock = ({ inline, className, children }: CodeBlockProps) => {
     );
   }
 
-  const currentStyle = theme === 'dark' ? vscDarkPlus : lightTheme;
-  const codeBgColor = theme === 'dark' ? '#1d1f21' : '#f5f5f5'; // Example light theme bg
+  const currentStyle = theme === "dark" ? vscDarkPlus : lightTheme;
+  const codeBgColor = theme === "dark" ? "#1d1f21" : "#f5f5f5"; // Example light theme bg
 
   return !inline && match ? (
     <div className="relative group">
       <SyntaxHighlighter
         style={currentStyle}
         customStyle={{
-          padding: '1rem',
-          paddingTop: '2.5rem', // Make space for the button
-          margin: '0',
+          padding: "1rem",
+          paddingTop: "2.5rem", // Make space for the button
+          margin: "0",
           backgroundColor: codeBgColor,
-          borderRadius: '0.375rem', // Corresponds to rounded-md
-          fontSize: '0.875rem' // text-sm
+          borderRadius: "0.375rem", // Corresponds to rounded-md
+          fontSize: "0.875rem", // text-sm
         }}
-        codeTagProps={{ 
-          style: { 
-            backgroundColor: 'transparent',
-            fontFamily: 'var(--font-mono)' // Use mono font from globals
-          } 
+        codeTagProps={{
+          style: {
+            backgroundColor: "transparent",
+            fontFamily: "var(--font-mono)", // Use mono font from globals
+          },
         }}
         language={match[1]}
         PreTag="div"
       >
         {codeString}
       </SyntaxHighlighter>
-      <button 
+      <button
         onClick={handleCopy}
         className="absolute top-2 right-2 p-1.5 bg-muted hover:bg-border text-muted-foreground rounded-md opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none focus:ring-2 focus:ring-ring"
         aria-label={isCopied ? "Copied!" : "Copy code"}
@@ -85,7 +98,9 @@ const CodeBlock = ({ inline, className, children }: CodeBlockProps) => {
       </button>
     </div>
   ) : (
-    <code className={`${className} text-sm font-mono bg-muted px-1 py-0.5 rounded-sm`}>
+    <code
+      className={`${className} text-sm font-mono bg-muted px-1 py-0.5 rounded-sm`}
+    >
       {children}
     </code>
   );
@@ -95,7 +110,11 @@ export default function MessageList({ messages }: MessageListProps) {
   if (messages.length === 0) {
     return (
       <div className="flex-grow flex flex-col items-center justify-center text-center p-4">
-        <BotMessageSquare size={48} className="text-muted-foreground mb-4" />
+        <FilePreview
+          src="/logo.svg"
+          alt="Omnichat Logo"
+          className="w-8 h-8 mr-2"
+        />
         <p className="text-muted-foreground">
           No messages yet. Send a message to start the conversation!
         </p>
@@ -125,7 +144,7 @@ export default function MessageList({ messages }: MessageListProps) {
               </motion.div>
             );
           }
-          
+
           const msg = item as Message;
           return (
             <motion.div
@@ -133,19 +152,26 @@ export default function MessageList({ messages }: MessageListProps) {
               layout
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, x: msg.sender === 'user' ? 20 : -20 }}
+              exit={{ opacity: 0, x: msg.sender === "user" ? 20 : -20 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
-              className={`flex items-end space-x-2.5 ${msg.sender === "user" ? "justify-end" : "justify-start"}`}
+              className={`flex items-end space-x-2.5 ${
+                msg.sender === "user" ? "justify-end" : "justify-start"
+              }`}
             >
               {msg.sender === "bot" && (
-                <BotMessageSquare size={28} className="text-primary mb-1 flex-shrink-0 self-start mt-1" />
+                <BotMessageSquare
+                  size={28}
+                  className="text-primary mb-1 flex-shrink-0 self-start mt-1"
+                />
               )}
-              <div className="flex flex-col max-w-xl lg:max-w-3xl xl:max-w-4xl"> 
+              <div className="flex flex-col max-w-xl lg:max-w-3xl xl:max-w-4xl">
                 <div
-                  className={`px-4 py-3 rounded-xl shadow-md 
-                    ${msg.sender === "user"
-                      ? "bg-primary text-primary-foreground rounded-br-none shadow-primary/20" 
-                      : "bg-card text-card-foreground rounded-bl-none shadow-muted/20 prose-chat-message"}
+                  className={`px-4 py-3 rounded-xl shadow-md border-1 border-slate-300/20
+                    ${
+                      msg.sender === "user"
+                        ? "bg-primary text-primary-foreground rounded-br-none shadow-primary/20"
+                        : "bg-card text-card-foreground rounded-bl-none shadow-muted/20 prose-chat-message"
+                    }
                     text-sm`}
                 >
                   {msg.sender === "bot" && msg.isStreaming && !msg.text && (
@@ -156,7 +182,7 @@ export default function MessageList({ messages }: MessageListProps) {
                       <span className="text-xs">Assistant is typing...</span>
                     </div>
                   )}
-                  {msg.sender === 'bot' ? (
+                  {msg.sender === "bot" ? (
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       rehypePlugins={[rehypeRaw]}
@@ -167,31 +193,52 @@ export default function MessageList({ messages }: MessageListProps) {
                   ) : (
                     <p className="whitespace-pre-wrap">{msg.text}</p>
                   )}
-                  {msg.sender === "bot" && msg.thinkingSteps && msg.thinkingSteps.length > 0 && (
-                    <Accordion type="single" collapsible className="w-full mt-2.5 text-xs">
-                      <AccordionItem value={`thinking-${msg.id}`} className="border-t border-border pt-1.5">
-                        <AccordionTrigger className="text-muted-foreground hover:no-underline py-1.5 px-0 text-left">
-                          Show Reasoning ({msg.thinkingSteps.length} steps)
-                        </AccordionTrigger>
-                        <AccordionContent className="bg-muted p-2.5 rounded-md mt-1.5">
-                          <ul className="list-decimal list-inside space-y-1.5 text-muted-foreground">
-                            {msg.thinkingSteps.map((step, idx) => (
-                              <li key={idx}>{step}</li>
-                            ))}
-                          </ul>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  )}
+                  {msg.sender === "bot" &&
+                    msg.thinkingSteps &&
+                    msg.thinkingSteps.length > 0 && (
+                      <Accordion
+                        type="single"
+                        collapsible
+                        className="w-full mt-2.5 text-xs"
+                      >
+                        <AccordionItem
+                          value={`thinking-${msg.id}`}
+                          className="border-t border-border pt-1.5"
+                        >
+                          <AccordionTrigger className="text-muted-foreground hover:no-underline py-1.5 px-0 text-left">
+                            Show Reasoning ({msg.thinkingSteps.length} steps)
+                          </AccordionTrigger>
+                          <AccordionContent className="bg-muted p-2.5 rounded-md mt-1.5">
+                            <ul className="list-decimal list-inside space-y-1.5 text-muted-foreground">
+                              {msg.thinkingSteps.map((step, idx) => (
+                                <li key={idx}>{step}</li>
+                              ))}
+                            </ul>
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
+                    )}
                 </div>
                 {msg.timestamp && (
-                  <p className={`text-xs mt-1 ${msg.sender === 'user' ? 'text-muted-foreground text-right' : 'text-muted-foreground text-left pl-1'}`}>
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  <p
+                    className={`text-xs mt-1 ${
+                      msg.sender === "user"
+                        ? "text-muted-foreground text-right"
+                        : "text-muted-foreground text-left pl-1"
+                    }`}
+                  >
+                    {new Date(msg.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </p>
                 )}
               </div>
               {msg.sender === "user" && (
-                <User size={28} className="text-primary mb-1 flex-shrink-0 self-start mt-1" />
+                <User
+                  size={28}
+                  className="text-primary mb-1 flex-shrink-0 self-start mt-1"
+                />
               )}
             </motion.div>
           );
@@ -199,4 +246,4 @@ export default function MessageList({ messages }: MessageListProps) {
       </AnimatePresence>
     </div>
   );
-} 
+}
