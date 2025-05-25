@@ -1,9 +1,18 @@
 "use client";
 
-import React, {useMemo, useState} from "react";
-import {AnimatePresence, motion} from "framer-motion";
-import {Edit3, Eye, EyeOff, Menu as MenuIcon, Moon, PlusCircle, Sun, Trash2, X as XIcon, Eraser} from "lucide-react";
-import {Model, useChatStore} from "@/app/store/chatStore";
+import React, { useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  Edit3,
+  Menu as MenuIcon,
+  Moon,
+  PlusCircle,
+  Sun,
+  Trash2,
+  X as XIcon,
+  Eraser,
+} from "lucide-react";
+import { Model, useChatStore } from "@/app/store/chatStore";
 import {
   Select,
   SelectContent,
@@ -13,11 +22,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {Input} from "@/components/ui/input";
-import {Button} from "@/components/ui/button";
-import {Textarea} from "@/components/ui/textarea";
-import {Dialog, DialogClose, DialogContent, DialogFooter, DialogHeader, DialogTitle,} from "@/components/ui/dialog";
-import {useTheme} from "next-themes";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useTheme } from "next-themes";
+import SettingsDialog from "../settings/SettingsDialog";
 
 export default function LeftSideMenu() {
   const {
@@ -26,8 +43,6 @@ export default function LeftSideMenu() {
     availableModels,
     selectedModelId,
     selectModel,
-    apiKeys,
-    setApiKey,
     chatSessions,
     activeChatSessionId,
     createNewChatSession,
@@ -40,14 +55,12 @@ export default function LeftSideMenu() {
     updateSessionSystemPrompt,
   } = useChatStore();
 
-  const [currentProviderApiKey, setCurrentProviderApiKey] = useState("");
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [sessionNewName, setSessionNewName] = useState("");
   const [deletingSessionId, setDeletingSessionId] = useState<string | null>(
     null
   );
   const [clearingAllSessions, setClearingAllSessions] = useState(false);
-  const [isApiKeyVisible, setIsApiKeyVisible] = useState(false);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -59,26 +72,6 @@ export default function LeftSideMenu() {
   const displayModelId = activeSession
     ? activeSession.modelId
     : selectedModelId;
-
-  const selectedModel = availableModels.find((m) => m.id === displayModelId);
-  const currentProvider = selectedModel?.provider;
-
-  useMemo(() => {
-    if (currentProvider) {
-      setCurrentProviderApiKey(apiKeys[currentProvider] || "");
-    }
-  }, [currentProvider, apiKeys]);
-
-  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setCurrentProviderApiKey(e.target.value);
-  };
-
-  const handleApiKeySave = () => {
-    if (currentProvider) {
-      setApiKey(currentProvider, currentProviderApiKey);
-      console.log(`API Key for ${currentProvider} saved.`);
-    }
-  };
 
   const menuVariants = {
     expanded: { width: "16rem", opacity: 1 },
@@ -112,7 +105,7 @@ export default function LeftSideMenu() {
   };
 
   const handleClearAllSessions = () => {
-    chatSessions.forEach(session => deleteChatSession(session.id));
+    chatSessions.forEach((session) => deleteChatSession(session.id));
     setClearingAllSessions(false);
   };
 
@@ -238,7 +231,7 @@ export default function LeftSideMenu() {
                             e.preventDefault();
                             setActiveChatSession(session.id);
                           }}
-                          className={`block p-2 text-sm truncate flex-grow rounded-md
+                          className={`block p-2 text-xs truncate flex-grow rounded-md
                           ${
                             activeChatSessionId === session.id
                               ? "text-sidebar-foreground font-medium"
@@ -287,8 +280,8 @@ export default function LeftSideMenu() {
                     placeholder="Set a global system prompt..."
                     value={globalSystemPrompt}
                     onChange={(e) => setGlobalSystemPrompt(e.target.value)}
-                    className="w-full min-h-[60px] bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/50 focus:ring-sidebar-ring focus:border-sidebar-ring no-scrollbar"
-                    rows={3}
+                    className="w-full min-h-[80px] bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/50 focus:ring-sidebar-ring focus:border-sidebar-ring no-scrollbar !text-xs"
+                    rows={5}
                   />
                   <Button
                     onClick={handleApplyGlobalSystemPrompt}
@@ -313,7 +306,7 @@ export default function LeftSideMenu() {
                   >
                     <SelectTrigger
                       id="model-select"
-                      className="w-full bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground focus:ring-sidebar-ring focus:border-sidebar-ring"
+                      className="w-full bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground focus:ring-sidebar-ring focus:border-sidebar-ring text-xs"
                     >
                       <SelectValue placeholder="Choose a model" />
                     </SelectTrigger>
@@ -321,14 +314,14 @@ export default function LeftSideMenu() {
                       {Object.entries(groupedModels).map(
                         ([providerName, modelsInGroup]) => (
                           <SelectGroup key={providerName}>
-                            <SelectLabel className="text-sidebar-foreground/70">
+                            <SelectLabel className="text-sidebar-foreground/70 text-sm font-bold">
                               {providerName}
                             </SelectLabel>
                             {modelsInGroup.map((model) => (
                               <SelectItem
                                 key={model.id}
                                 value={model.id}
-                                className="hover:bg-sidebar-accent focus:bg-sidebar-accent data-[highlighted]:bg-sidebar-accent data-[state=checked]:bg-sidebar-accent/80"
+                                className="hover:bg-sidebar-accent focus:bg-sidebar-accent data-[highlighted]:bg-sidebar-accent data-[state=checked]:bg-sidebar-accent/80 text-xs"
                               >
                                 {model.name}
                               </SelectItem>
@@ -339,50 +332,9 @@ export default function LeftSideMenu() {
                     </SelectContent>
                   </Select>
                 </div>
-
-                {selectedModel?.apiKeyRequired && (
-                  <div className="mb-3">
-                    <label
-                      htmlFor="api-key-input"
-                      className="block text-xs font-medium text-sidebar-foreground/70 mb-1 px-1"
-                    >
-                      {selectedModel.provider} API Key
-                    </label>
-                    <div className="flex space-x-1.5 items-center">
-                      <Input
-                        id="api-key-input"
-                        type={isApiKeyVisible ? "text" : "password"}
-                        placeholder={`Enter ${selectedModel.provider} API key`}
-                        value={currentProviderApiKey}
-                        onChange={handleApiKeyChange}
-                        className="w-full bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground placeholder-sidebar-foreground/50 focus:ring-sidebar-ring focus:border-sidebar-ring"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setIsApiKeyVisible(!isApiKeyVisible)}
-                        className="text-sidebar-foreground/70 hover:text-sidebar-foreground h-9 w-9 flex-shrink-0"
-                        aria-label={
-                          isApiKeyVisible ? "Hide API key" : "Show API key"
-                        }
-                      >
-                        {isApiKeyVisible ? (
-                          <EyeOff size={18} />
-                        ) : (
-                          <Eye size={18} />
-                        )}
-                      </Button>
-                    </div>
-                    <Button
-                      onClick={handleApiKeySave}
-                      variant="secondary"
-                      size="sm"
-                      className="mt-2 bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 h-6 w-full"
-                    >
-                      Save API Key
-                    </Button>
-                  </div>
-                )}
+                <div className="mb-3">
+                  <SettingsDialog isMenuCollapsed={isMenuCollapsed} />
+                </div>
               </div>
             </motion.div>
           )}
@@ -474,7 +426,8 @@ export default function LeftSideMenu() {
             </DialogTitle>
           </DialogHeader>
           <p className="text-sm text-sidebar-foreground/80 py-3">
-            Are you sure you want to delete all chat sessions? This action cannot be undone.
+            Are you sure you want to delete all chat sessions? This action
+            cannot be undone.
           </p>
           <DialogFooter>
             <DialogClose asChild>
