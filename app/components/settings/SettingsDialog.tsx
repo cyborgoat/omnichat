@@ -13,6 +13,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ModelsSettingsForm } from "./ModelsSettingsForm"; // Import models settings component
 import { ApiKeysSettingsForm } from "./ApiKeysSettingsForm"; // Import new component
 import { ProxySettingsForm } from "./ProxySettingsForm"; // Import proxy settings component
+import { AdvancedSettingsForm } from "./AdvancedSettingsForm"; // Import advanced settings component
 import { SettingsIcon } from "lucide-react"; // Import SettingsIcon
 
 interface SettingsDialogProps {
@@ -32,7 +33,7 @@ export function SettingsDialog({ isMenuCollapsed }: SettingsDialogProps) {
           <span className="sr-only">Open Settings</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto sm:w-[600px]">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
@@ -40,19 +41,23 @@ export function SettingsDialog({ isMenuCollapsed }: SettingsDialogProps) {
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="models" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="models">Models</TabsTrigger>
-            <TabsTrigger value="apiKeys">API Keys</TabsTrigger>
-            <TabsTrigger value="proxy">Proxy</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1">
+            <TabsTrigger value="models" className="text-xs sm:text-sm">Models</TabsTrigger>
+            <TabsTrigger value="apiKeys" className="text-xs sm:text-sm">API Keys</TabsTrigger>
+            <TabsTrigger value="proxy" className="text-xs sm:text-sm">Proxy</TabsTrigger>
+            <TabsTrigger value="advanced" className="text-xs sm:text-sm">Advanced</TabsTrigger>
           </TabsList>
-          <TabsContent value="models">
+          <TabsContent value="models" className="mt-4 px-1 sm:px-0">
             <ModelsSettingsForm />
           </TabsContent>
-          <TabsContent value="apiKeys">
+          <TabsContent value="apiKeys" className="mt-4 px-1 sm:px-0">
             <ApiKeysSettingsForm />
           </TabsContent>
-          <TabsContent value="proxy">
+          <TabsContent value="proxy" className="mt-4 px-1 sm:px-0">
             <ProxySettingsForm />
+          </TabsContent>
+          <TabsContent value="advanced" className="mt-4 px-1 sm:px-0">
+            <AdvancedSettingsForm />
           </TabsContent>
         </Tabs>
       </DialogContent>

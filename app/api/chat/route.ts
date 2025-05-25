@@ -1,6 +1,5 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {Content} from '@google/generative-ai';
-import OpenAI from 'openai';
 import { spawn } from 'node:child_process';
 
 // We will add Qwen specific imports or helpers later if needed.
@@ -400,15 +399,12 @@ async function* handleGeminiRequest(apiKey: string, modelId: string, messages: C
   }
 }
 
-// --- Deepseek Handler (OpenAI Compatible) ---
-async function* handleDeepseekRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string): AsyncGenerator<string> {
-  const deepseek = new OpenAI({
-    apiKey: apiKey,
-    baseURL: 'https://api.deepseek.com' 
-  });
+// --- Deepseek Handler (Curl-based with Proxy Support) ---
+async function* handleDeepseekRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string, proxySettings?: { enabled?: boolean; http?: string; https?: string; socks?: string }): AsyncGenerator<string> {
+  console.log(`[DEEPSEEK] Using direct HTTP API with proxy settings:`, proxySettings);
 
-  const apiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = messages.map(msg => ({
-    role: msg.role === 'model' ? 'assistant' : msg.role as 'user' | 'assistant' | 'system',
+  const apiMessages: {role: string, content: string}[] = messages.map(msg => ({
+    role: msg.role === 'model' ? 'assistant' : msg.role,
     content: msg.content,
   }));
 
@@ -427,29 +423,101 @@ async function* handleDeepseekRequest(apiKey: string, modelId: string, messages:
       apiMessages.splice(systemMessageIndex, 1);
     }
   }
-  
-  try {
-    const stream = await deepseek.chat.completions.create({
-        model: modelId,
-        messages: apiMessages,
-        stream: true,
-    });
 
-    for await (const chunk of stream) {
-        if (chunk.choices[0]?.delta?.content) {
-        yield chunk.choices[0].delta.content;
-        }
+  const payload = {
+    model: modelId,
+    messages: apiMessages,
+    stream: true,
+    temperature: 0.7,
+    max_tokens: 2048,
+  };
+
+  const url = 'https://api.deepseek.com/chat/completions';
+  
+  const fetchOptions: RequestInit = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(payload),
+  };
+
+  console.log(`[DEEPSEEK] Making direct HTTP request to: ${url}`);
+  console.log(`[DEEPSEEK] Using proxy settings:`, !!proxySettings);
+
+  try {
+    const response = await curlFetch(url, fetchOptions, proxySettings);
+    
+    if (!response.ok) {
+      let errorText = `HTTP ${response.status} ${response.statusText}`;
+      try {
+        errorText = await response.text();
+      } catch (e) {
+        console.warn(`[DEEPSEEK] Could not read error response body:`, e);
+      }
+      console.error(`[DEEPSEEK] HTTP error: ${response.status} ${response.statusText}`, errorText);
+      throw new Error(`Deepseek API HTTP error: ${response.status} ${response.statusText} - ${errorText}`);
     }
+
+    console.log(`[DEEPSEEK] Successfully connected, processing response...`);
+
+    if (!response.body) {
+      throw new Error("Deepseek response body is null");
+    }
+
+    // Process SSE stream
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      
+      buffer += decoder.decode(value, { stream: true });
+      
+      let eolIndex;
+      while ((eolIndex = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.substring(0, eolIndex);
+        buffer = buffer.substring(eolIndex + 1);
+
+        if (line.startsWith("data: ")) {
+          const dataJson = line.substring(6).trim();
+          if (dataJson === "[DONE]") {
+            console.log(`[DEEPSEEK] Stream completed`);
+            return;
+          }
+          
+          try {
+            const parsedData = JSON.parse(dataJson);
+            const choice = parsedData.choices?.[0];
+            
+            if (choice?.delta?.content) {
+              yield choice.delta.content;
+            }
+            
+            if (choice?.finish_reason === "stop") {
+              console.log(`[DEEPSEEK] Stream finished with stop reason`);
+              return;
+            }
+          } catch (e) {
+            console.error("[DEEPSEEK] Error parsing SSE event:", e, "Event string:", dataJson);
+          }
+        }
+      }
+    }
+    
+    console.log(`[DEEPSEEK] Response processing completed successfully`);
   } catch (e: unknown) {
-    console.error("Deepseek API streaming error:", e);
+    console.error("[DEEPSEEK] Direct HTTP request error:", e);
     const message = e instanceof Error ? e.message : String(e);
-    // Prepend provider name to the error message for clarity on the client-side
-    throw new Error(`Deepseek API error: ${message}`); 
+    throw new Error(`Deepseek API streaming error: ${message}`);
   }
 }
 
 // --- Qwen Handler (Updated for QwQ Deep Thinking Models) ---
-async function* handleQwenRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string): AsyncGenerator<string> {
+async function* handleQwenRequest(apiKey: string, modelId: string, messages: ChatMessageCore[], systemPrompt?: string, proxySettings?: { enabled?: boolean; http?: string; https?: string; socks?: string }): AsyncGenerator<string> {
     // Check if this is a deep thinking model (QwQ, Qwen3, or DeepSeek-R1)
     const isDeepThinkingModel = modelId.includes('qwq') || 
                                modelId.includes('qwen-plus-latest') || 
@@ -483,14 +551,18 @@ async function* handleQwenRequest(apiKey: string, modelId: string, messages: Cha
                 { enable_thinking: true } : {})
         };
 
-        const response = await fetch(openaiCompatibleUrl, {
+        console.log(`[QWEN] Using OpenAI-compatible endpoint with proxy settings:`, proxySettings);
+        
+        const fetchOptions: RequestInit = {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json', 
                 'Authorization': `Bearer ${apiKey}`
             },
             body: JSON.stringify(payload),
-        });
+        };
+
+        const response = await curlFetch(openaiCompatibleUrl, fetchOptions, proxySettings);
 
         if (!response.ok) {
             const errorBody = await response.text();
@@ -571,7 +643,9 @@ async function* handleQwenRequest(apiKey: string, modelId: string, messages: Cha
             parameters: { incremental_output: true }
         };
         
-        const response = await fetch(url, {
+        console.log(`[QWEN] Using Dashscope API with proxy settings:`, proxySettings);
+        
+        const fetchOptions: RequestInit = {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json', 
@@ -579,7 +653,9 @@ async function* handleQwenRequest(apiKey: string, modelId: string, messages: Cha
                 'X-DashScope-SSE': 'enable'
             },
             body: JSON.stringify(payload),
-        });
+        };
+
+        const response = await curlFetch(url, fetchOptions, proxySettings);
 
         if (!response.ok) {
             const errorBody = await response.text();
@@ -891,10 +967,10 @@ export async function POST(req: NextRequest) {
       streamGenerator = handleGeminiRequest(apiKey, modelId, messages, systemPrompt, proxySettings);
     } else if (modelId.toLowerCase().startsWith('qwen') || modelId.toLowerCase().startsWith('qwq') || modelId.toLowerCase().includes('deepseek-r1')) {
       // Route all Qwen, QwQ, and DeepSeek-R1 models to the updated Qwen handler
-      streamGenerator = handleQwenRequest(apiKey, modelId, messages, systemPrompt);
+      streamGenerator = handleQwenRequest(apiKey, modelId, messages, systemPrompt, proxySettings);
     } else if (modelId.toLowerCase().startsWith('deepseek')) {
       // Handle regular DeepSeek models (not R1)
-      streamGenerator = handleDeepseekRequest(apiKey, modelId, messages, systemPrompt);
+      streamGenerator = handleDeepseekRequest(apiKey, modelId, messages, systemPrompt, proxySettings);
     } else {
       return NextResponse.json({ error: `Unsupported model provider for ID: ${modelId}` }, { status: 400 });
     }

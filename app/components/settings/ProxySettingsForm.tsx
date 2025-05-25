@@ -102,7 +102,7 @@ export function ProxySettingsForm() {
                   Enable Proxy
                 </FormLabel>
                 <FormDescription className="text-xs text-muted-foreground">
-                  Turn proxy on or off for Gemini API calls
+                  Turn proxy on or off for all API calls
                 </FormDescription>
               </div>
               <FormControl>
@@ -192,7 +192,7 @@ export function ProxySettingsForm() {
           <p className="font-medium mb-1">Note:</p>
           <p>• SOCKS proxy takes priority over HTTP/HTTPS proxies</p>
           <p>• Leave fields empty to disable proxy for that protocol</p>
-          <p>• Proxy settings apply to Gemini API calls only</p>
+          <p>• Proxy settings apply to all model providers (OpenAI, Anthropic, Gemini, Deepseek, Qwen)</p>
         </div>
       </form>
     </Form>
