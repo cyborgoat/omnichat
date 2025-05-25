@@ -12,6 +12,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProfileSettingsForm } from "./ProfileSettingsForm"; // Import new component
 import { ApiKeysSettingsForm } from "./ApiKeysSettingsForm"; // Import new component
+import { ProxySettingsForm } from "./ProxySettingsForm"; // Import proxy settings component
 import { SettingsIcon } from "lucide-react"; // Import SettingsIcon
 
 interface SettingsDialogProps {
@@ -39,15 +40,19 @@ export function SettingsDialog({ isMenuCollapsed }: SettingsDialogProps) {
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="profile">Profile</TabsTrigger>
             <TabsTrigger value="apiKeys">API Keys</TabsTrigger>
+            <TabsTrigger value="proxy">Proxy</TabsTrigger>
           </TabsList>
           <TabsContent value="profile">
             <ProfileSettingsForm />
           </TabsContent>
           <TabsContent value="apiKeys">
             <ApiKeysSettingsForm />
+          </TabsContent>
+          <TabsContent value="proxy">
+            <ProxySettingsForm />
           </TabsContent>
         </Tabs>
       </DialogContent>

@@ -44,12 +44,20 @@ export type ApiKeys = {
   [provider: string]: string | undefined;
 };
 
+export interface ProxySettings {
+  enabled?: boolean;
+  http?: string;
+  https?: string;
+  socks?: string;
+}
+
 // Define which parts of the state should be persisted
 interface PersistedChatState {
   isMenuCollapsed: boolean;
   availableModels: Model[]; // Assuming models list can change or be configured by user later
   selectedModelId: string | null;
   apiKeys: ApiKeys;
+  proxySettings: ProxySettings;
   globalSystemPrompt: string;
   chatSessions: ChatSession[];
   activeChatSessionId: string | null;
@@ -64,6 +72,7 @@ export interface ChatState extends PersistedChatState {
   toggleMenu: () => void;
   selectModel: (modelId: string) => void;
   setApiKey: (provider: string, key: string) => void;
+  setProxySettings: (settings: ProxySettings) => void;
   setGlobalSystemPrompt: (prompt: string) => void;
   createNewChatSession: (modelId?: string, name?: string) => string; 
   setActiveChatSession: (sessionId: string) => void;
@@ -86,8 +95,12 @@ const initialModels: Model[] = [
   { id: 'gpt-4', name: 'GPT-4', provider: 'OpenAI', apiKeyRequired: true },
   { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', provider: 'OpenAI', apiKeyRequired: true },
   // Google Gemini
-  { id: 'gemini-1.5-pro-latest', name: 'Gemini 1.5 Pro', provider: 'Google', apiKeyRequired: true },
-  { id: 'gemini-1.0-pro', name: 'Gemini 1.0 Pro', provider: 'Google', apiKeyRequired: true }, // Example, older version
+  { id: 'gemini-2.5-pro-preview-05-06', name: 'Gemini 2.5 Pro Preview', provider: 'Google', apiKeyRequired: true },
+  { id: 'gemini-2.5-flash-preview-05-20', name: 'Gemini 2.5 Flash Preview', provider: 'Google', apiKeyRequired: true },
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', provider: 'Google', apiKeyRequired: true },
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', provider: 'Google', apiKeyRequired: true },
+  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', provider: 'Google', apiKeyRequired: true },
+  { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash-8B', provider: 'Google', apiKeyRequired: true },
   // Anthropic Claude
   { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', provider: 'Anthropic', apiKeyRequired: true },
   { id: 'claude-3-sonnet-20240229', name: 'Claude 3 Sonnet', provider: 'Anthropic', apiKeyRequired: true },
@@ -118,6 +131,7 @@ export const useChatStore = create<ChatState>()(
       availableModels: initialModels,
       selectedModelId: initialModels[0]?.id || null,
       apiKeys: {},
+      proxySettings: {},
       globalSystemPrompt: "You are a helpful AI assistant. Respond in Markdown format.",
       chatSessions: [],
       activeChatSessionId: null,
@@ -144,6 +158,7 @@ export const useChatStore = create<ChatState>()(
         });
       },
       setApiKey: (provider, key) => set((state) => ({ apiKeys: { ...state.apiKeys, [provider]: key } })),
+      setProxySettings: (settings) => set({ proxySettings: settings }),
       setGlobalSystemPrompt: (prompt) => set({ globalSystemPrompt: prompt }),
 
       createNewChatSession: (modelIdToUse, name) => {

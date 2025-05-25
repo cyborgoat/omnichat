@@ -273,6 +273,7 @@ export default function ChatScreen() {
           modelId: currentSessionState.modelId,
           apiKey: apiKey,
           systemPrompt: systemPromptToUse,
+          proxySettings: store.proxySettings,
         }),
       });
 
