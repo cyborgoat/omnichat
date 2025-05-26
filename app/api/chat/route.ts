@@ -73,28 +73,97 @@ async function curlFetchNonStreaming(url: string, options: RequestInit, proxySet
       
       console.log(`✅ Curl request successful`);
       
-      // Parse response
-      const parts = stdout.split('\r\n\r\n');
-      const headerPart = parts[0];
-      const bodyPart = parts.slice(1).join('\r\n\r\n');
+      // Parse response - handle both Windows (\r\n\r\n) and Unix (\n\n) line endings
+      let headerPart = '';
+      let bodyPart = '';
       
-      // Parse status line
-      const statusLine = headerPart.split('\r\n')[0];
-      const statusMatch = statusLine.match(/HTTP\/[\d.]+\s+(\d+)\s*(.*)/);
-      const status = statusMatch ? parseInt(statusMatch[1]) : 200;
-      const statusText = statusMatch ? statusMatch[2] : 'OK';
-      
-      // Parse headers
-      const headers = new Headers();
-      const headerLines = headerPart.split('\r\n').slice(1);
-      headerLines.forEach(line => {
-        const colonIndex = line.indexOf(':');
-        if (colonIndex > 0) {
-          const key = line.substring(0, colonIndex).trim();
-          const value = line.substring(colonIndex + 1).trim();
-          headers.set(key, value);
+      // Try Windows-style line endings first
+      if (stdout.includes('\r\n\r\n')) {
+        const parts = stdout.split('\r\n\r\n');
+        headerPart = parts[0];
+        bodyPart = parts.slice(1).join('\r\n\r\n');
+      } 
+      // Fall back to Unix-style line endings
+      else if (stdout.includes('\n\n')) {
+        const parts = stdout.split('\n\n');
+        headerPart = parts[0];
+        bodyPart = parts.slice(1).join('\n\n');
+      } 
+      // If no double line endings found, try to parse malformed response
+      else {
+        // Look for single line ending after status line
+        const firstLineEnd = stdout.indexOf('\n');
+        if (firstLineEnd > 0) {
+          const statusLine = stdout.substring(0, firstLineEnd);
+          if (statusLine.includes('HTTP/')) {
+            // Has HTTP status, try to find where headers end and body begins
+            const remainingContent = stdout.substring(firstLineEnd + 1);
+            
+            // Look for the first line that starts with '{' (likely JSON body)
+            const lines = remainingContent.split('\n');
+            let bodyStartIndex = -1;
+            
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i].trim();
+              if (line.startsWith('{') || line.startsWith('[')) {
+                bodyStartIndex = i;
+                break;
+              }
+            }
+            
+            if (bodyStartIndex >= 0) {
+              const headerLines = lines.slice(0, bodyStartIndex);
+              const bodyLines = lines.slice(bodyStartIndex);
+              headerPart = statusLine + '\n' + headerLines.join('\n');
+              bodyPart = bodyLines.join('\n');
+            } else {
+              // No clear JSON start found, treat as headers + text body
+              headerPart = statusLine;
+              bodyPart = remainingContent;
+            }
+          } else {
+            // No HTTP status found, treat as plain body
+            headerPart = '';
+            bodyPart = stdout;
+          }
+        } else {
+          headerPart = '';
+          bodyPart = stdout;
         }
-      });
+      }
+      
+      // Parse status line and headers
+      let status = 200;
+      let statusText = 'OK';
+      const headers = new Headers();
+      
+      if (headerPart) {
+        // Handle both \r\n and \n line endings in headers
+        const headerLines = headerPart.includes('\r\n') 
+          ? headerPart.split('\r\n') 
+          : headerPart.split('\n');
+        
+        // Parse status line (first line)
+        if (headerLines.length > 0) {
+          const statusLine = headerLines[0];
+          const statusMatch = statusLine.match(/HTTP\/[\d.]+\s+(\d+)\s*(.*)/);
+          status = statusMatch ? parseInt(statusMatch[1]) : 200;
+          statusText = statusMatch ? statusMatch[2].trim() : 'OK';
+        }
+        
+        // Parse remaining header lines
+        for (let i = 1; i < headerLines.length; i++) {
+          const line = headerLines[i].trim();
+          if (line) {
+            const colonIndex = line.indexOf(':');
+            if (colonIndex > 0) {
+              const key = line.substring(0, colonIndex).trim();
+              const value = line.substring(colonIndex + 1).trim();
+              headers.set(key, value);
+            }
+          }
+        }
+      }
       
       const response = {
         ok: status >= 200 && status < 300,

@@ -52,6 +52,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced streaming support for reasoning models
 - Improved error handling for different API endpoints
 
+## [1.1.1] - 2025-01-27
+
+### Fixed
+- **Critical Tauri Build Issue**: Fixed welcome page appearing in chat bubbles in built Tauri applications
+- **Environment Detection**: Enhanced environment detection with multiple fallback methods for reliable Tauri/static export identification
+- **API Route Handling**: Improved dual-environment architecture to properly route API calls in both web and desktop modes
+- **Build Process**: Enhanced build scripts to properly handle API folder during static export builds
+
+### Technical Improvements
+- **Robust Environment Detection**: Added multiple detection methods (`__TAURI__` global, protocol check, user agent, static export detection)
+- **Automatic API Routing**: Smart routing between server-side API routes (web) and client-side API calls (desktop)
+- **Fallback Mechanisms**: Automatic fallback to client-side handlers if server-side API fails
+- **Enhanced Logging**: Detailed environment detection logging for better debugging
+- **Cross-Platform Build Scripts**: Improved build scripts using Node.js for better cross-platform compatibility
+
+### Architecture
+- **Unified Chat Handler**: Single `handleChat()` function that automatically chooses the appropriate API method
+- **Static Export Support**: Proper handling of Next.js static exports for Tauri builds
+- **Dual Build Configuration**: Separate build targets for web deployment and desktop applications
+
 ## [Unreleased]
 - Additional AI provider integrations
 - Enhanced chat export functionality

@@ -6,9 +6,9 @@ import MessageList from "../chat/MessageList";
 import ChatInput from "../chat/ChatInput";
 import {Message, useActiveChatSession, useChatStore,} from "@/app/store/chatStore";
 import {WelcomeScreen} from "../chat/WelcomeScreen";
-import { API_ENDPOINTS } from "@/app/constants";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
+import { handleChat } from "@/app/lib/chat-client";
 
 export default function ChatScreen() {
   const store = useChatStore(); // Get the whole store for easier access to multiple states/actions
@@ -102,7 +102,7 @@ export default function ChatScreen() {
     if (activeSession) {
       prevMessageCountRef.current = activeSession.messages.length;
     }
-  }, [activeSession?.messages, store.isBotThinking, scrollToBottom, scrollToBottomIfNeeded]);
+  }, [activeSession, activeSession?.messages, store.isBotThinking, scrollToBottom, scrollToBottomIfNeeded]);
 
   // Cleanup timeouts on unmount
   useEffect(() => {
@@ -236,7 +236,7 @@ export default function ChatScreen() {
       .filter((item): item is Message => item.type === "message" && item.id !== botMessageId)
       .map((msg) => {
         return {
-          role: msg.sender === "bot" ? "assistant" : "user",
+          role: msg.sender === "bot" ? "assistant" as const : "user" as const,
           content: msg.text,
         };
       });
@@ -267,89 +267,19 @@ export default function ChatScreen() {
       currentSessionState.systemPrompt || store.globalSystemPrompt;
 
     try {
-      const response = await fetch(API_ENDPOINTS.CHAT, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: apiMessages,
-          modelId: currentSessionState.modelId,
-          apiKey: apiKey,
-          systemPrompt: systemPromptToUse,
-          proxySettings: store.proxySettings,
-        }),
+      // Use the unified chat handler that works for both web and Tauri
+      const chatStream = handleChat({
+        messages: apiMessages,
+        modelId: currentSessionState.modelId,
+        apiKey: apiKey!, // We already checked for missing API key above
+        systemPrompt: systemPromptToUse,
+        proxySettings: store.proxySettings,
       });
 
-      if (!response.ok) {
-        let errorData = {
-          error: `API request failed with status ${response.status}`,
-        };
-        try {
-          const responseText = await response.text(); // Read as text first
-          try {
-            errorData = JSON.parse(responseText); // Try to parse as JSON
-          } catch {
-            // Removed unused _parseError variable
-            // If JSON parsing fails, use the text content directly or a part of it
-            errorData.error =
-              responseText.length > 150
-                ? responseText.substring(0, 150) + "..."
-                : responseText;
-            if (!errorData.error)
-              errorData.error = `API request failed with status ${response.status}. No error details provided.`;
-          }
-        } catch {
-          // Removed unused _e variable
-          errorData.error = response.statusText || errorData.error;
-        }
-        throw new Error(errorData.error);
-      }
-
-      if (!response.body) {
-        throw new Error("Response body is null");
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
       let buffer = ""; // Buffer to handle partial thinking markers
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          // Process any remaining content in buffer
-          if (buffer) {
-            store.appendMessageContent(currentSessionState.id, botMessageId, buffer);
-          }
-          store.setMessageStreamingState(
-            currentSessionState.id,
-            botMessageId,
-            false
-          );
-          break;
-        }
-        
-        const chunk = decoder.decode(value, { stream: true });
+      for await (const chunk of chatStream) {
         buffer += chunk;
-        
-        // Check for special stream error signal
-        if (buffer.includes("STREAM_ERROR:")) {
-          const errorMessage =
-            buffer.split("STREAM_ERROR:")[1]?.trim() ||
-            "Unknown streaming error.";
-          console.error("Streaming error from API route:", errorMessage);
-          store.updateMessageContent(
-            currentSessionState.id,
-            botMessageId,
-            `Error: ${errorMessage}`
-          );
-          store.setMessageStreamingState(
-            currentSessionState.id,
-            botMessageId,
-            false
-          );
-          break;
-        }
         
         // Process thinking content markers
         while (buffer.includes("__THINKING_START__") && buffer.includes("__THINKING_END__")) {
@@ -384,10 +314,10 @@ export default function ChatScreen() {
           }
         }
       }
-      const remaining = decoder.decode();
-      if (remaining) {
-        buffer += remaining;
-        // Process any final thinking content
+
+      // Process any remaining content in buffer
+      if (buffer) {
+        // Handle any final thinking content
         while (buffer.includes("__THINKING_START__") && buffer.includes("__THINKING_END__")) {
           const startIndex = buffer.indexOf("__THINKING_START__");
           const endIndex = buffer.indexOf("__THINKING_END__") + "__THINKING_END__".length;
@@ -414,6 +344,9 @@ export default function ChatScreen() {
           store.appendMessageContent(currentSessionState.id, botMessageId, buffer);
         }
       }
+
+      // Mark streaming as complete
+      store.setMessageStreamingState(currentSessionState.id, botMessageId, false);
 
       const finalSessionCheck = useChatStore
         .getState()

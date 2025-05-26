@@ -3,6 +3,7 @@ import {Inter} from "next/font/google";
 import "./globals.css";
 import {ThemeProvider} from "@/app/components/ThemeProvider";
 import { Toaster } from "@/components/ui/sonner";
+import EnvironmentLogger from "@/app/components/EnvironmentLogger";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -44,6 +45,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
+          <EnvironmentLogger />
           {children}
           <Toaster />
         </ThemeProvider>

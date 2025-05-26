@@ -96,7 +96,7 @@ Omnichat is a versatile chat application that allows you to interact with variou
 
 ### Running the Application
 
-#### Web Application
+#### Web Application (Development)
 ```bash
 npm run dev
 # or
@@ -106,18 +106,41 @@ pnpm dev
 ```
 Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-#### Desktop Application
+#### Desktop Application (Development)
 ```bash
-# Development mode
+# Development mode (includes API routes via proxy)
 npm run tauri:dev
 # or
 yarn tauri:dev
+```
 
-# Build for production
+#### Production Builds
+
+**Web Deployment (with API routes):**
+```bash
+npm run build:web
+# or
+yarn build:web
+```
+
+**Desktop Application (static export):**
+```bash
 npm run tauri:build
 # or
 yarn tauri:build
 ```
+
+**Note:** The application features an intelligent dual-environment architecture:
+- **Web Deployment**: Uses Next.js server-side API routes for optimal performance
+- **Desktop Application**: Uses direct client-side API calls to LLM providers
+- **Automatic Detection**: Smart environment detection with multiple fallback methods
+- **Seamless Experience**: Same codebase works perfectly in both environments
+
+This robust architecture ensures:
+- ✅ **Web deployments** work with full Next.js server-side functionality
+- ✅ **Desktop builds** work as static exports without requiring a server
+- ✅ **Automatic routing** between server-side and client-side API calls
+- ✅ **Fallback mechanisms** for maximum reliability
 
 ## Project Structure
 
@@ -168,17 +191,47 @@ omnichat/
 ## Available Scripts
 
 ```bash
-# Web development
-npm run dev          # Start Next.js dev server
-npm run build        # Build for production
-npm run start        # Start production server
-npm run lint         # Run ESLint
+# Development
+npm run dev          # Start Next.js dev server (web)
+npm run tauri:dev    # Start Tauri dev mode (desktop with API proxy)
 
-# Desktop development
-npm run tauri        # Tauri CLI
-npm run tauri:dev    # Start Tauri dev mode
-npm run tauri:build  # Build desktop app
+# Production builds
+npm run build:web    # Build for web deployment (with API routes)
+npm run build:tauri  # Build static export for Tauri (temporarily disables API folder)
+npm run tauri:build  # Build complete desktop application
+
+# Other scripts
+npm run build        # Default build (web deployment)
+npm run start        # Start production server (web only)
+npm run lint         # Run ESLint
+npm run tauri        # Tauri CLI access
 ```
+
+## Architecture & Environment Detection
+
+Omnichat features a sophisticated dual-environment architecture that automatically adapts to different deployment contexts:
+
+### **Environment Detection**
+The application uses multiple detection methods to determine the runtime environment:
+
+1. **Primary Detection**: `__TAURI__` global object presence
+2. **Protocol Detection**: `tauri://` or `file://` protocol identification
+3. **User Agent Detection**: Tauri-specific user agent strings
+4. **Static Export Detection**: Identifies Next.js static export contexts
+
+### **API Routing Strategy**
+Based on environment detection, the app automatically chooses the optimal API strategy:
+
+- **🌐 Web Mode**: Uses Next.js API routes (`/api/chat`) for server-side processing
+- **🖥️ Desktop Mode**: Uses direct client-side API calls to LLM providers
+- **🔄 Fallback Mode**: Automatically falls back to client-side if server-side fails
+
+### **Build Process**
+The build system intelligently handles different deployment targets:
+
+- **Web Build**: Standard Next.js build with full server-side functionality
+- **Tauri Build**: Static export with temporary API folder exclusion for clean builds
+- **Cross-Platform**: Node.js-based build scripts for Windows, macOS, and Linux compatibility
 
 ## Configuration
 

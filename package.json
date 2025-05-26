@@ -1,15 +1,17 @@
 {
   "name": "omnichat",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "build:web": "next build",
+    "build:tauri": "node -e \"const fs=require('fs'); try{fs.renameSync('app/api','app/api.disabled')}catch(e){}\" && cross-env TAURI_BUILD=true next build && node -e \"const fs=require('fs'); try{fs.renameSync('app/api.disabled','app/api')}catch(e){}\"",
     "start": "next start",
     "lint": "next lint",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "npm run build:tauri && tauri build"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.51.0",
@@ -55,6 +57,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/react-syntax-highlighter": "^15.5.13",
+    "cross-env": "^7.0.3",
     "eslint": "^9",
     "eslint-config-next": "15.3.2",
     "tailwindcss": "^4",
