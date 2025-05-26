@@ -13,7 +13,6 @@ import {
     Sun,
     Menu as MenuIcon,
     X as XIcon,
-    Settings as SettingsIconLucide,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Model, useChatStore, useEnabledModels } from "@/app/store/chatStore";
@@ -46,18 +45,7 @@ const sidebarVariants = {
     collapsed: { width: "4rem", opacity: 1 },
 };
 
-const contentAnimatePresenceVariants = {
-    expanded: {
-        opacity: 1,
-        x: 0,
-        transition: { type: "spring", stiffness: 300, damping: 30, delay: 0.1 },
-    },
-    collapsed: {
-        opacity: 0,
-        x: -20,
-        transition: { duration: 0.2 },
-    },
-};
+
 
 const itemFadeSlideVariants = {
   initial: { opacity: 0, x: -10 },
@@ -190,18 +178,11 @@ export function AppSidebar() {
                         )}
                     </AnimatePresence>
 
-                    {/* Collapsed: Centered Logo */}
-                    {isMenuCollapsed && (
-                        // This div ensures the logo is centered in the available space of the header
-                        // The menu toggle will be positioned absolutely to the right of this.
-                        <div className="w-full flex justify-center items-center h-full">
-                             <FilePreview src="/logo.svg" alt="Omnichat Logo" className="w-8 h-8 flex-shrink-0" />
-                        </div>
-                    )}
+                    {/* Collapsed: No Logo (hidden) */}
 
                     {/* Theme Toggle (Expanded Only) & Menu Toggle (Always Right Aligned) */}
                     {/* This div is always on the right. When collapsed, menu toggle is pushed by invisible theme toggle space or centered by itself. */}
-                    <div className={`flex items-center ml-auto ${isMenuCollapsed ? "absolute top-1/2 right-2 -translate-y-1/2" : ""}`}>
+                    <div className={`flex items-center ml-auto}`}>
                         <AnimatePresence>
                             {!isMenuCollapsed && mounted && (
                                 <motion.div
