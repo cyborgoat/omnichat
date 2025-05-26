@@ -109,7 +109,7 @@ const CodeBlock = ({ inline, className, children }: CodeBlockProps) => {
 export default function MessageList({ messages }: MessageListProps) {
   if (messages.length === 0) {
     return (
-      <div className="flex-grow flex flex-col items-center justify-center text-center p-4">
+      <div className="flex-grow flex flex-col items-center justify-center text-center p-4 min-h-full">
         <FilePreview
           src="/logo.svg"
           alt="Omnichat Logo"
@@ -122,7 +122,7 @@ export default function MessageList({ messages }: MessageListProps) {
     );
   }
   return (
-    <div className="space-y-5 p-1 md:p-4 flex-grow">
+    <div className="space-y-5 min-h-full">
       <AnimatePresence initial={false}>
         {messages.map((item) => {
           if (item.type === "system_prompt_update") {

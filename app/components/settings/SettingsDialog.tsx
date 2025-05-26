@@ -18,15 +18,18 @@ import { SettingsIcon } from "lucide-react"; // Import SettingsIcon
 
 interface SettingsDialogProps {
   isMenuCollapsed: boolean;
+  triggerButtonClassName?: string;
 }
 
-export function SettingsDialog({ isMenuCollapsed }: SettingsDialogProps) {
+export function SettingsDialog({ isMenuCollapsed, triggerButtonClassName }: SettingsDialogProps) {
+  const defaultClassName = `text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent w-full flex justify-start items-center ${isMenuCollapsed ? 'px-2' : 'px-2 py-2'}`;
+  
   return (
     <Dialog>
       <DialogTrigger asChild>
         <Button 
           variant="ghost" 
-          className={`text-sidebar-foreground/80 hover:text-sidebar-foreground hover:bg-sidebar-accent w-full flex justify-start items-center ${isMenuCollapsed ? 'px-2' : 'px-2 py-2'}`}
+          className={triggerButtonClassName || defaultClassName}
         >
           <SettingsIcon size={20} className={`${!isMenuCollapsed ? 'mr-2' : ''}`} />
           {!isMenuCollapsed && <span className="ml-1">Settings</span>}

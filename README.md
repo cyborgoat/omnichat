@@ -130,25 +130,23 @@ npm run tauri:build
 yarn tauri:build
 ```
 
-**Note:** The application features an intelligent dual-environment architecture:
-- **Web Deployment**: Uses Next.js server-side API routes for optimal performance
-- **Desktop Application**: Uses direct client-side API calls to LLM providers
-- **Automatic Detection**: Smart environment detection with multiple fallback methods
-- **Seamless Experience**: Same codebase works perfectly in both environments
+**Note:** The application features a unified client-side architecture:
+- **Consistent API Handling**: All LLM provider interactions use direct client-side API calls
+- **Cross-Platform Compatibility**: Same codebase works perfectly in both web and desktop environments
+- **Simplified Deployment**: No server-side dependencies required for any deployment mode
+- **CORS-Optimized**: Uses provider-specific endpoints that support browser-based requests
 
-This robust architecture ensures:
-- ✅ **Web deployments** work with full Next.js server-side functionality
-- ✅ **Desktop builds** work as static exports without requiring a server
-- ✅ **Automatic routing** between server-side and client-side API calls
-- ✅ **Fallback mechanisms** for maximum reliability
+This streamlined architecture ensures:
+- ✅ **Web deployments** work as static sites without requiring a server
+- ✅ **Desktop builds** work identically to web builds
+- ✅ **Simplified maintenance** with unified API handling logic
+- ✅ **Better performance** with direct provider communication
 
 ## Project Structure
 
 ```
 omnichat/
 ├── app/                          # Next.js App Router
-│   ├── api/
-│   │   └── chat/route.ts        # Multi-provider LLM API endpoint
 │   ├── components/
 │   │   ├── chat/                # Chat-specific components
 │   │   │   ├── ChatInput.tsx
@@ -163,6 +161,8 @@ omnichat/
 │   │   │   └── ApiKeysSettingsForm.tsx
 │   │   ├── ui/                  # Shadcn UI components
 │   │   └── ThemeProvider.tsx
+│   ├── lib/
+│   │   └── chat-client.ts       # Unified client-side API handlers
 │   ├── store/
 │   │   └── chatStore.ts         # Zustand global state
 │   ├── globals.css              # Global styles & theme variables
@@ -192,46 +192,20 @@ omnichat/
 
 ```bash
 # Development
-npm run dev          # Start Next.js dev server (web)
-npm run tauri:dev    # Start Tauri dev mode (desktop with API proxy)
+npm run dev          # Start Next.js dev server
+npm run tauri:dev    # Start Tauri dev mode (desktop)
 
 # Production builds
-npm run build:web    # Build for web deployment (with API routes)
-npm run build:tauri  # Build static export for Tauri (temporarily disables API folder)
+npm run build:web    # Build for web deployment (static export)
+npm run build:tauri  # Build for Tauri (same as web build)
 npm run tauri:build  # Build complete desktop application
 
 # Other scripts
-npm run build        # Default build (web deployment)
+npm run build        # Default build (static export)
 npm run start        # Start production server (web only)
 npm run lint         # Run ESLint
 npm run tauri        # Tauri CLI access
 ```
-
-## Architecture & Environment Detection
-
-Omnichat features a sophisticated dual-environment architecture that automatically adapts to different deployment contexts:
-
-### **Environment Detection**
-The application uses multiple detection methods to determine the runtime environment:
-
-1. **Primary Detection**: `__TAURI__` global object presence
-2. **Protocol Detection**: `tauri://` or `file://` protocol identification
-3. **User Agent Detection**: Tauri-specific user agent strings
-4. **Static Export Detection**: Identifies Next.js static export contexts
-
-### **API Routing Strategy**
-Based on environment detection, the app automatically chooses the optimal API strategy:
-
-- **🌐 Web Mode**: Uses Next.js API routes (`/api/chat`) for server-side processing
-- **🖥️ Desktop Mode**: Uses direct client-side API calls to LLM providers
-- **🔄 Fallback Mode**: Automatically falls back to client-side if server-side fails
-
-### **Build Process**
-The build system intelligently handles different deployment targets:
-
-- **Web Build**: Standard Next.js build with full server-side functionality
-- **Tauri Build**: Static export with temporary API folder exclusion for clean builds
-- **Cross-Platform**: Node.js-based build scripts for Windows, macOS, and Linux compatibility
 
 ## Configuration
 

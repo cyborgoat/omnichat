@@ -91,7 +91,7 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
   const acceptedFileTypes = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_TEXT_TYPES].join(",");
 
   return (
-    <div className="p-3 md:p-4 border-t border-border bg-card text-card-foreground shadow-up">
+    <div className="p-3 md:p-4 border-t border-border bg-card text-card-foreground shadow-up z-10 flex-shrink-0">
       {selectedFiles.length > 0 && (
         <div className="mb-3 p-3 border border-border rounded-lg bg-muted">
           <div className="flex flex-wrap gap-3">
