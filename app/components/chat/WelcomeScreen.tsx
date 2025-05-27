@@ -16,7 +16,7 @@ export function WelcomeScreen() {
 
   return (
     <div className="flex-1 flex flex-col items-center justify-center h-full bg-background p-8 text-center">
-      <FilePreview src="/logo.svg" alt="Omnichat Logo" className="w-16 h-16 mb-6 flex-shrink-0 rounded-full" />
+      <FilePreview src="/omnichat.svg" alt="Omnichat Logo" className="w-16 h-16 mb-6 flex-shrink-0 rounded-full" />
       <h1 className="text-3xl font-semibold text-foreground mb-3">
         Welcome to Omnichat
       </h1>

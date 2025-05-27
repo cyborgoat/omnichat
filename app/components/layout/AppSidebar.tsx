@@ -170,7 +170,7 @@ export function AppSidebar() {
                                 exit="exit"
                                 className="flex items-center flex-shrink-0" // Added flex-shrink-0
                             >
-                                <FilePreview src="/logo.svg" alt="Omnichat Logo" className="w-8 h-8 mr-2 flex-shrink-0 rounded-full" />
+                                <FilePreview src="/omnichat.svg" alt="Omnichat Logo" className="w-8 h-8 mr-2 flex-shrink-0 rounded-full" />
                                 <h1 className="text-xl font-semibold text-sidebar-foreground whitespace-nowrap">
                                     Omnichat
                                 </h1>

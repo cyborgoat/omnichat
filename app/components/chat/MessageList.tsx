@@ -111,7 +111,7 @@ export default function MessageList({ messages }: MessageListProps) {
     return (
       <div className="flex-grow flex flex-col items-center justify-center text-center p-4 min-h-full">
         <FilePreview
-          src="/logo.svg"
+          src="/omnichat.svg"
           alt="Omnichat Logo"
           className="w-12 h-12 mb-4 flex-shrink-0 rounded-full"
         />
