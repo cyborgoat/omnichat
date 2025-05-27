@@ -6,7 +6,11 @@ import { useChatStore } from "@/app/store/chatStore";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 
-export function ModelsSettingsForm() {
+interface ModelsSettingsFormProps {
+  setIsDirty: (isDirty: boolean) => void;
+}
+
+export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
   const { availableModels, enabledModelIds, setEnabledModels } = useChatStore();
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>(enabledModelIds);
 
@@ -29,14 +33,17 @@ export function ModelsSettingsForm() {
     } else {
       setSelectedModelIds(prev => prev.filter(id => id !== modelId));
     }
+    setIsDirty(true);
   };
 
   const handleSelectAll = () => {
     setSelectedModelIds(availableModels.map(m => m.id));
+    setIsDirty(true);
   };
 
   const handleDeselectAll = () => {
     setSelectedModelIds([]);
+    setIsDirty(true);
   };
 
   const handleProviderToggle = (provider: string, checked: boolean) => {
@@ -46,6 +53,7 @@ export function ModelsSettingsForm() {
     } else {
       setSelectedModelIds(prev => prev.filter(id => !providerModelIds.includes(id)));
     }
+    setIsDirty(true);
   };
 
   const handleSave = () => {
@@ -55,6 +63,7 @@ export function ModelsSettingsForm() {
     }
     setEnabledModels(selectedModelIds);
     toast.success("Model settings saved!");
+    setIsDirty(false);
   };
 
   const hasChanges = JSON.stringify(selectedModelIds.sort()) !== JSON.stringify(enabledModelIds.sort());

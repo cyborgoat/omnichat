@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/form";
 import { useChatStore } from "@/app/store/chatStore";
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 // Define the schema for API keys using provider names from chatStore
@@ -29,7 +29,11 @@ const apiKeySchema = z.object({
 
 type ApiKeyFormValues = z.infer<typeof apiKeySchema>;
 
-export function ApiKeysSettingsForm() {
+interface ApiKeysSettingsFormProps {
+  setIsDirty: (isDirty: boolean) => void;
+}
+
+export function ApiKeysSettingsForm({ setIsDirty }: ApiKeysSettingsFormProps) {
   const { apiKeys, setApiKey } = useChatStore();
   const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>(
     {}
@@ -45,7 +49,13 @@ export function ApiKeysSettingsForm() {
       Deepseek: apiKeys.Deepseek || "",
       Anthropic: apiKeys.Anthropic || "",
     },
+    mode: "onChange",
   });
+
+  useEffect(() => {
+    const subscription = apiKeyForm.watch(() => setIsDirty(apiKeyForm.formState.isDirty));
+    return () => subscription.unsubscribe();
+  }, [apiKeyForm, setIsDirty]);
 
   function onApiKeySubmit(data: ApiKeyFormValues) {
     // Save API keys using the correct provider names
@@ -55,6 +65,8 @@ export function ApiKeysSettingsForm() {
     if (data.Deepseek !== undefined) setApiKey("Deepseek", data.Deepseek);
     if (data.Anthropic !== undefined) setApiKey("Anthropic", data.Anthropic);
     toast.success("API keys saved!");
+    setIsDirty(false);
+    apiKeyForm.reset(data);
   }
 
   const toggleVisibility = (fieldName: keyof ApiKeyFormValues) => {
@@ -138,7 +150,7 @@ export function ApiKeysSettingsForm() {
             )}
           />
         ))}
-        <Button type="submit" className="text-xs">Save API Keys</Button>
+        <Button type="submit" className="text-xs" disabled={!apiKeyForm.formState.isDirty}>Save API Keys</Button>
       </form>
     </Form>
   );

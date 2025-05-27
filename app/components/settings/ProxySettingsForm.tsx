@@ -29,7 +29,11 @@ const proxySchema = z.object({
 
 type ProxyFormValues = z.infer<typeof proxySchema>;
 
-export function ProxySettingsForm() {
+interface ProxySettingsFormProps {
+  setIsDirty: (isDirty: boolean) => void;
+}
+
+export function ProxySettingsForm({ setIsDirty }: ProxySettingsFormProps) {
   const { proxySettings, setProxySettings } = useChatStore();
   
   const proxyForm = useForm<ProxyFormValues>({
@@ -40,17 +44,25 @@ export function ProxySettingsForm() {
       https: "",
       socks: "",
     },
+    mode: "onChange",
   });
 
   const isProxyEnabled = proxyForm.watch("enabled");
 
   useEffect(() => {
     // Load proxy settings from store
-    proxyForm.setValue("enabled", proxySettings.enabled ?? false);
-    proxyForm.setValue("http", proxySettings.http || "");
-    proxyForm.setValue("https", proxySettings.https || "");
-    proxyForm.setValue("socks", proxySettings.socks || "");
+    proxyForm.reset({
+      enabled: proxySettings.enabled ?? false,
+      http: proxySettings.http || "",
+      https: proxySettings.https || "",
+      socks: proxySettings.socks || "",
+    });
   }, [proxyForm, proxySettings]);
+
+  useEffect(() => {
+    const subscription = proxyForm.watch(() => setIsDirty(proxyForm.formState.isDirty));
+    return () => subscription.unsubscribe();
+  }, [proxyForm, setIsDirty]);
 
   function onProxySubmit(data: ProxyFormValues) {
     // Filter out empty strings and include enabled flag
@@ -63,6 +75,8 @@ export function ProxySettingsForm() {
     
     setProxySettings(cleanedData);
     toast.success("Proxy settings saved!");
+    setIsDirty(false);
+    proxyForm.reset(cleanedData);
   }
 
   function clearProxySettings() {
@@ -74,6 +88,7 @@ export function ProxySettingsForm() {
       socks: "",
     });
     toast.success("Proxy settings cleared!");
+    setIsDirty(false);
   }
 
   return (
@@ -185,7 +200,7 @@ export function ProxySettingsForm() {
         />
         
         <div className="pt-2">
-          <Button type="submit" className="text-xs">Save Proxy Settings</Button>
+          <Button type="submit" className="text-xs" disabled={!proxyForm.formState.isDirty}>Save Proxy Settings</Button>
         </div>
         
         <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md">

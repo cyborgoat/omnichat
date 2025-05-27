@@ -13,7 +13,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useChatStore } from "@/app/store/chatStore";
 import { Trash2, RefreshCw, AlertTriangle } from "lucide-react";
@@ -30,7 +30,11 @@ const advancedSchema = z.object({
 
 type AdvancedFormValues = z.infer<typeof advancedSchema>;
 
-export function AdvancedSettingsForm() {
+interface AdvancedSettingsFormProps {
+  setIsDirty: (isDirty: boolean) => void;
+}
+
+export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) {
   const [isClearing, setIsClearing] = useState(false);
   const { 
     apiKeys, 
@@ -55,11 +59,20 @@ export function AdvancedSettingsForm() {
       clearGlobalSystemPrompt: false,
       clearAll: false,
     },
+    mode: "onChange",
   });
+
+  useEffect(() => {
+    const subscription = form.watch((value, { name, type }) => {
+      if (type === 'change') {
+        setIsDirty(form.formState.isDirty);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form, setIsDirty]);
 
   const clearAll = form.watch("clearAll");
 
-  // When "Clear All" is checked, check all other options
   const handleClearAllChange = (checked: boolean) => {
     form.setValue("clearAll", checked);
     form.setValue("clearApiKeys", checked);
@@ -67,6 +80,7 @@ export function AdvancedSettingsForm() {
     form.setValue("clearEnabledModels", checked);
     form.setValue("clearChatSessions", checked);
     form.setValue("clearGlobalSystemPrompt", checked);
+    setIsDirty(true);
   };
 
   const onSubmit = async (data: AdvancedFormValues) => {
@@ -76,7 +90,6 @@ export function AdvancedSettingsForm() {
       const clearedSections: string[] = [];
 
       if (data.clearAll) {
-        // Clear everything and reload
         localStorage.removeItem('omnichat-storage');
         toast.success("All data cleared! Reloading application...");
         setTimeout(() => {
@@ -85,9 +98,7 @@ export function AdvancedSettingsForm() {
         return;
       }
 
-      // Clear specific sections
       if (data.clearApiKeys) {
-        // Clear all API keys
         Object.keys(apiKeys).forEach(provider => {
           setApiKey(provider, '');
         });
@@ -100,13 +111,11 @@ export function AdvancedSettingsForm() {
       }
 
       if (data.clearEnabledModels) {
-        // Reset to all models enabled
         setEnabledModels(availableModels.map(m => m.id));
         clearedSections.push("Model Selection");
       }
 
       if (data.clearChatSessions) {
-        // Clear all chat sessions - reset to empty array
         useChatStore.setState({
           chatSessions: [],
           activeChatSessionId: null,
@@ -121,10 +130,11 @@ export function AdvancedSettingsForm() {
 
       if (clearedSections.length > 0) {
         toast.success(`Cleared: ${clearedSections.join(", ")}`);
-        // Reset form
         form.reset();
+        setIsDirty(false);
       } else {
         toast.info("No sections selected for clearing");
+        setIsDirty(false);
       }
 
     } catch (error) {
@@ -206,7 +216,10 @@ export function AdvancedSettingsForm() {
                 <FormControl>
                   <Checkbox
                     checked={field.value || clearAll}
-                    onCheckedChange={field.onChange}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      if (!clearAll) setIsDirty(true);
+                    }}
                     disabled={clearAll}
                   />
                 </FormControl>
@@ -228,7 +241,10 @@ export function AdvancedSettingsForm() {
                 <FormControl>
                   <Checkbox
                     checked={field.value || clearAll}
-                    onCheckedChange={field.onChange}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      if (!clearAll) setIsDirty(true);
+                    }}
                     disabled={clearAll}
                   />
                 </FormControl>
@@ -250,7 +266,10 @@ export function AdvancedSettingsForm() {
                 <FormControl>
                   <Checkbox
                     checked={field.value || clearAll}
-                    onCheckedChange={field.onChange}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      if (!clearAll) setIsDirty(true);
+                    }}
                     disabled={clearAll}
                   />
                 </FormControl>
@@ -272,7 +291,10 @@ export function AdvancedSettingsForm() {
                 <FormControl>
                   <Checkbox
                     checked={field.value || clearAll}
-                    onCheckedChange={field.onChange}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      if (!clearAll) setIsDirty(true);
+                    }}
                     disabled={clearAll}
                   />
                 </FormControl>
@@ -294,7 +316,10 @@ export function AdvancedSettingsForm() {
                 <FormControl>
                   <Checkbox
                     checked={field.value || clearAll}
-                    onCheckedChange={field.onChange}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked);
+                      if (!clearAll) setIsDirty(true);
+                    }}
                     disabled={clearAll}
                   />
                 </FormControl>
@@ -313,7 +338,7 @@ export function AdvancedSettingsForm() {
           <Button 
             type="submit" 
             variant="destructive" 
-            disabled={isClearing}
+            disabled={isClearing || !form.formState.isDirty}
             className="flex items-center gap-2"
           >
             {isClearing ? (
