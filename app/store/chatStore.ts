@@ -209,60 +209,53 @@ const initialModels: Model[] = [
   {
     id: "qwen-turbo",
     name: "Qwen Turbo",
-    provider: "Qwen(DashScope)",
+    provider: "Qwen",
     apiKeyRequired: true,
   }, // Tongyi Qwen Turbo
   {
     id: "qwen-plus",
     name: "Qwen Plus",
-    provider: "Qwen(DashScope)",
+    provider: "Qwen",
     apiKeyRequired: true,
   }, // Tongyi Qwen Plus
   {
     id: "qwen-max",
     name: "Qwen Max",
-    provider: "Qwen(DashScope)",
+    provider: "Qwen",
     apiKeyRequired: true,
   }, // Tongyi Qwen Max
   // Qwen3 Deep Thinking Models
   {
     id: "qwen-plus-latest",
     name: "Qwen3 Plus (Latest)",
-    provider: "Qwen(DashScope)",
+    provider: "Qwen",
     apiKeyRequired: true,
   }, // Qwen3 with thinking
   {
     id: "qwen-plus-2025-04-28",
     name: "Qwen3 Plus (0428)",
-    provider: "Qwen(DashScope)",
+    provider: "Qwen",
     apiKeyRequired: true,
   }, // Qwen3 snapshot
   {
     id: "qwen-turbo-latest",
     name: "Qwen3 Turbo (Latest)",
-    provider: "Qwen(DashScope)",
+    provider: "Qwen",
     apiKeyRequired: true,
   }, // Qwen3 Turbo with thinking
   // QwQ Deep Thinking Models
   {
     id: "qwq-plus",
     name: "QwQ Plus (Deep Thinking)",
-    provider: "Qwen(DashScope)",
+    provider: "Qwen",
     apiKeyRequired: true,
   }, // QwQ reasoning model
   {
     id: "qwq-32b-preview",
     name: "QwQ 32B Preview",
-    provider: "Qwen(DashScope)",
+    provider: "Qwen",
     apiKeyRequired: true,
   }, // QwQ 32B model
-  // DeepSeek-R1 Deep Thinking
-  {
-    id: "deepseek-r1",
-    name: "DeepSeek-R1 (Deep Thinking)",
-    provider: "Qwen(DashScope)",
-    apiKeyRequired: true,
-  }, // DeepSeek-R1 via Dashscope
 ];
 
 export const useChatStore = create<ChatState>()(

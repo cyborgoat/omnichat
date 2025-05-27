@@ -1,4 +1,4 @@
-import type {Metadata} from "next";
+import type {Metadata, Viewport} from "next";
 import {Inter} from "next/font/google";
 import "./globals.css";
 import {ThemeProvider} from "@/app/components/ThemeProvider";
@@ -24,12 +24,18 @@ export const metadata: Metadata = {
     ],
   },
   manifest: "/manifest.json",
-  viewport: "width=device-width, initial-scale=1",
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
-  ],
 };
+
+export function generateViewport(): Viewport {
+  return {
+    width: "device-width",
+    initialScale: 1,
+    themeColor: [
+      { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+      { media: "(prefers-color-scheme: dark)", color: "#000000" },
+    ],
+  }
+}
 
 export default function RootLayout({
   children,

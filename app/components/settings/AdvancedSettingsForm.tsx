@@ -63,8 +63,8 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
   });
 
   useEffect(() => {
-    const subscription = form.watch((value, { name, type }) => {
-      if (type === 'change') {
+    const subscription = form.watch((_value, { type: eventType }) => {
+      if (eventType === 'change') {
         setIsDirty(form.formState.isDirty);
       }
     });
@@ -80,7 +80,6 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
     form.setValue("clearEnabledModels", checked);
     form.setValue("clearChatSessions", checked);
     form.setValue("clearGlobalSystemPrompt", checked);
-    setIsDirty(true);
   };
 
   const onSubmit = async (data: AdvancedFormValues) => {
@@ -162,6 +161,14 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
   };
 
   const summary = getDataSummary();
+
+  // Determine if any clear action is selected
+  const anyClearActionSelected = form.watch("clearAll") || 
+                                 form.watch("clearApiKeys") || 
+                                 form.watch("clearProxySettings") || 
+                                 form.watch("clearEnabledModels") || 
+                                 form.watch("clearChatSessions") || 
+                                 form.watch("clearGlobalSystemPrompt");
 
   return (
     <Form {...form}>
@@ -338,7 +345,7 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
           <Button 
             type="submit" 
             variant="destructive" 
-            disabled={isClearing || !form.formState.isDirty}
+            disabled={isClearing || !anyClearActionSelected}
             className="flex items-center gap-2"
           >
             {isClearing ? (
