@@ -15,20 +15,25 @@ interface FilePreviewProps {
  */
 export function FilePreview({ src, alt, className }: FilePreviewProps) {
   const { resolvedTheme } = useTheme();
-  const objectRef = useRef<HTMLObjectElement>(null); // Keep ref if needed for other purposes, though not used in this simplified version
+  const objectRef = useRef<HTMLObjectElement>(null);
   const [dynamicSrc, setDynamicSrc] = useState(src);
+
+  // Use NEXT_PUBLIC_ASSET_PREFIX if available (set by Next.js during build, especially with basePath)
+  const assetPrefix = process.env.NEXT_PUBLIC_ASSET_PREFIX || "";
 
   const isSvg = src.toLowerCase().endsWith(".svg");
 
   useEffect(() => {
+    // Ensure src starts with a slash if it doesn't already, then prepend assetPrefix
+    const correctedSrc = src.startsWith('/') ? src : `/${src}`;
+    const prefixedSrc = assetPrefix + correctedSrc;
+
     if (isSvg) {
-      // Append a query string that changes with the theme
-      // to help force the browser to re-evaluate the SVG which uses CSS variables.
-      setDynamicSrc(`${src}?theme=${resolvedTheme}`);
+      setDynamicSrc(`${prefixedSrc}?theme=${resolvedTheme}`);
     } else {
-      setDynamicSrc(src); // For non-SVGs, just use the original src
+      setDynamicSrc(prefixedSrc);
     }
-  }, [resolvedTheme, src, isSvg]);
+  }, [resolvedTheme, src, isSvg, assetPrefix]);
 
   if (isSvg) {
     return (
@@ -46,7 +51,7 @@ export function FilePreview({ src, alt, className }: FilePreviewProps) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={dynamicSrc} // Original src for non-SVGs, or with theme for SVGs
+      src={dynamicSrc} // dynamicSrc now includes assetPrefix
       alt={alt}
       className={className}
       loading="lazy"
