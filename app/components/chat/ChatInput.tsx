@@ -14,6 +14,7 @@ import {
 } from "@/app/constants";
 import { SelectedFile } from "@/app/types";
 import { FilePreview } from "../ui/file-preview";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
 interface ChatInputProps {
   onSendMessage: (messageText: string, files?: File[]) => void;
@@ -90,6 +91,8 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
 
   const acceptedFileTypes = [...ALLOWED_IMAGE_TYPES, ...ALLOWED_TEXT_TYPES].join(",");
 
+  const fileUploadDisabled = selectedFiles.length >= MAX_TOTAL_FILES || isSendingMessage;
+
   return (
     <div className="p-3 md:p-4 border-t border-border bg-card text-card-foreground shadow-up z-10 flex-shrink-0">
       {selectedFiles.length > 0 && (
@@ -121,22 +124,32 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
         </div>
       )}
       <div className="flex items-center space-x-2">
-        <label htmlFor="file-upload" 
-          className={`cursor-pointer p-2 rounded-full hover:bg-muted 
-          ${selectedFiles.length >= MAX_TOTAL_FILES ? 'opacity-50 cursor-not-allowed' : ''}
-          ${isSendingMessage ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          <Paperclip size={20} className="text-muted-foreground" />
-          <input 
-            id="file-upload" 
-            type="file" 
-            multiple 
-            className="hidden" 
-            onChange={handleFileChange} 
-            accept={acceptedFileTypes}
-            disabled={selectedFiles.length >= MAX_TOTAL_FILES || isSendingMessage}
-          />
-        </label>
+        <HoverCard openDelay={200} closeDelay={100}>
+          <HoverCardTrigger asChild>
+            <label
+              onClick={(e) => e.preventDefault()}
+              className={`cursor-pointer p-2 rounded-full hover:bg-muted 
+              ${selectedFiles.length >= MAX_TOTAL_FILES ? 'opacity-50 cursor-not-allowed' : ''}
+              ${isSendingMessage ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              <Paperclip size={20} className="text-muted-foreground" />
+              <input 
+                id="file-upload" 
+                type="file" 
+                multiple 
+                className="hidden" 
+                onChange={handleFileChange} 
+                accept={acceptedFileTypes}
+                disabled={fileUploadDisabled}
+              />
+            </label>
+          </HoverCardTrigger>
+          {!fileUploadDisabled && (
+            <HoverCardContent className="text-sm w-auto px-3 py-1.5">
+              File upload coming soon!
+            </HoverCardContent>
+          )}
+        </HoverCard>
         <Input
           type="text"
           placeholder={isSendingMessage ? "Waiting for response..." : "Type a message or drop files..."}

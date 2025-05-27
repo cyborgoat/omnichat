@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 
 interface FilePreviewProps {
@@ -9,63 +9,31 @@ interface FilePreviewProps {
 
 /**
  * Simple file preview component for user-uploaded images or SVGs.
- * Uses an <object> tag for SVGs to allow dynamic fill color changes based on theme.
+ * Uses an <object> tag for SVGs to allow dynamic fill color changes based on theme via CSS variables.
+ * Appends a theme-based query parameter to the SVG src to help force re-evaluation on theme change.
  * Uses <img> tag for other image types.
  */
 export function FilePreview({ src, alt, className }: FilePreviewProps) {
-  const { theme } = useTheme();
-  const objectRef = useRef<HTMLObjectElement>(null);
+  const { resolvedTheme } = useTheme();
+  const objectRef = useRef<HTMLObjectElement>(null); // Keep ref if needed for other purposes, though not used in this simplified version
+  const [dynamicSrc, setDynamicSrc] = useState(src);
 
-  const isSvg = src.endsWith(".svg");
+  const isSvg = src.toLowerCase().endsWith(".svg");
 
   useEffect(() => {
-    if (isSvg && objectRef.current) {
-      const loadHandler = () => {
-        try {
-          const svgDocument = objectRef.current?.contentDocument;
-          if (svgDocument) {
-            const svgElement = svgDocument.querySelector("svg");
-            if (svgElement) {
-              // Remove existing style tags or fill attributes that might conflict
-              const styleTags = svgDocument.querySelectorAll("style");
-              styleTags.forEach(tag => tag.remove());
-              svgElement.removeAttribute("fill");
-              const paths = svgElement.querySelectorAll("path");
-              paths.forEach(path => path.removeAttribute("fill"));
-
-              // Apply theme-based fill
-              // Check if the SVG itself has a class like logo-path to target specific elements
-              const themedPaths = svgElement.querySelectorAll(".logo-path"); 
-              const elementsToColor = themedPaths.length > 0 ? themedPaths : paths;
-              
-              elementsToColor.forEach(el => {
-                (el as HTMLElement).style.fill = theme === "dark" ? "#FFFFFF" : "#000000";
-              });
-            }
-          }
-        } catch (error) {
-          console.error("Error manipulating SVG:", error);
-        }
-      };
-
-      // Re-run when theme changes
-      if (objectRef.current.contentDocument) {
-        loadHandler(); // If already loaded, just apply
-      }
-      objectRef.current.addEventListener("load", loadHandler);
-      return () => {
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        objectRef.current?.removeEventListener("load", loadHandler);
-      };
+    if (isSvg) {
+      // Append a query string that changes with the theme
+      // to help force the browser to re-evaluate the SVG which uses CSS variables.
+      setDynamicSrc(`${src}?theme=${resolvedTheme}`);
     }
-  }, [src, theme, isSvg]);
+  }, [resolvedTheme, src, isSvg]);
 
   if (isSvg) {
     return (
       <object
         ref={objectRef}
         type="image/svg+xml"
-        data={src}
+        data={dynamicSrc} // Use the dynamic source with the theme query parameter
         className={className}
         aria-label={alt}
         style={{ pointerEvents: "none" }} // Prevent object from capturing mouse events
@@ -76,7 +44,7 @@ export function FilePreview({ src, alt, className }: FilePreviewProps) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src}
+      src={src} // Original src for non-SVGs
       alt={alt}
       className={className}
       loading="lazy"
