@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
+import getConfig from 'next/config';
 
 interface FilePreviewProps {
   src: string;
@@ -18,15 +19,21 @@ export function FilePreview({ src, alt, className }: FilePreviewProps) {
   const objectRef = useRef<HTMLObjectElement>(null); // Keep ref if needed for other purposes, though not used in this simplified version
   const [dynamicSrc, setDynamicSrc] = useState(src);
 
+  const { publicRuntimeConfig } = getConfig() || {};
+  const basePath = publicRuntimeConfig?.basePath || "";
+
   const isSvg = src.toLowerCase().endsWith(".svg");
 
   useEffect(() => {
+    const effectiveSrc = basePath + (src.startsWith('/') ? src : `/${src}`);
     if (isSvg) {
       // Append a query string that changes with the theme
       // to help force the browser to re-evaluate the SVG which uses CSS variables.
-      setDynamicSrc(`${src}?theme=${resolvedTheme}`);
+      setDynamicSrc(`${effectiveSrc}?theme=${resolvedTheme}`);
+    } else {
+      setDynamicSrc(effectiveSrc);
     }
-  }, [resolvedTheme, src, isSvg]);
+  }, [resolvedTheme, src, isSvg, basePath]);
 
   if (isSvg) {
     return (
@@ -44,7 +51,7 @@ export function FilePreview({ src, alt, className }: FilePreviewProps) {
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={src} // Original src for non-SVGs
+      src={dynamicSrc} // Use dynamicSrc which now includes basePath
       alt={alt}
       className={className}
       loading="lazy"
