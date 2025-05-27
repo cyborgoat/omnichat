@@ -160,7 +160,7 @@ export default function LeftSideMenu() {
         {!isMenuCollapsed && (
           <div className="flex items-center">
             <FilePreview
-              src="/logo.svg"
+              src="/omnichat.svg"
               alt="Omnichat Logo"
               className="w-8 h-8 mr-2"
             />

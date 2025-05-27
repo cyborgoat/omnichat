@@ -16,11 +16,11 @@ export const metadata: Metadata = {
   publisher: "Omnichat",
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
-      { url: "/logo.svg", type: "image/svg+xml" },
+      { url: "/omnichat.ico", sizes: "32x32", type: "image/x-icon" },
+      { url: "/omnichat.svg", type: "image/svg+xml" },
     ],
     apple: [
-      { url: "/favicon.ico", sizes: "32x32", type: "image/x-icon" },
+      { url: "/omnichat.ico", sizes: "32x32", type: "image/x-icon" },
     ],
   },
   manifest: "/manifest.json",
