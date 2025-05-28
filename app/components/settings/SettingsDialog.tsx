@@ -22,7 +22,6 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ModelsSettingsForm } from "./ModelsSettingsForm"; // Import models settings component
 import { ApiKeysSettingsForm } from "./ApiKeysSettingsForm"; // Import new component
-import { ProxySettingsForm } from "./ProxySettingsForm"; // Import proxy settings component
 import { AdvancedSettingsForm } from "./AdvancedSettingsForm"; // Import advanced settings component
 import { SettingsIcon } from "lucide-react"; // Import SettingsIcon
 import { useState } from "react"; // Import useState
@@ -80,10 +79,9 @@ export function SettingsDialog({ isMenuCollapsed, triggerButtonClassName }: Sett
           </DialogDescription>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 gap-1">
             <TabsTrigger value="models" className="text-xs sm:text-sm">Models</TabsTrigger>
             <TabsTrigger value="apiKeys" className="text-xs sm:text-sm">API Keys</TabsTrigger>
-            <TabsTrigger value="proxy" className="text-xs sm:text-sm">Proxy</TabsTrigger>
             <TabsTrigger value="advanced" className="text-xs sm:text-sm">Advanced</TabsTrigger>
           </TabsList>
           <TabsContent value="models" className="mt-4 px-1 sm:px-0">
@@ -91,9 +89,6 @@ export function SettingsDialog({ isMenuCollapsed, triggerButtonClassName }: Sett
           </TabsContent>
           <TabsContent value="apiKeys" className="mt-4 px-1 sm:px-0">
             <ApiKeysSettingsForm setIsDirty={setIsDirty} />
-          </TabsContent>
-          <TabsContent value="proxy" className="mt-4 px-1 sm:px-0">
-            <ProxySettingsForm setIsDirty={setIsDirty} />
           </TabsContent>
           <TabsContent value="advanced" className="mt-4 px-1 sm:px-0">
             <AdvancedSettingsForm setIsDirty={setIsDirty} />

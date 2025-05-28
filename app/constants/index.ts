@@ -1,14 +1,19 @@
 // File upload constants
-export const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+export const ALLOWED_IMAGE_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+];
 export const ALLOWED_TEXT_TYPES = [
-  "text/plain", 
-  "text/markdown", 
-  "application/pdf", 
-  "application/json", 
-  "application/xml", 
-  "text/csv", 
-  "text/html", 
-  "application/javascript"
+  "text/plain",
+  "text/markdown",
+  "application/pdf",
+  "application/json",
+  "application/xml",
+  "text/csv",
+  "text/html",
+  "application/javascript",
 ];
 export const MAX_FILE_SIZE_MB = 10;
 export const MAX_TOTAL_FILES = 5;
@@ -16,13 +21,6 @@ export const MAX_TOTAL_FILES = 5;
 // UI constants
 export const SIDEBAR_WIDTH = 280;
 export const SIDEBAR_COLLAPSED_WIDTH = 60;
-
-// Local storage keys
-export const STORAGE_KEYS = {
-  PROXY_HTTP: "proxyHttp",
-  PROXY_HTTPS: "proxyHttps", 
-  PROXY_SOCKS: "proxySocks",
-} as const;
 
 // API endpoints
 export const API_ENDPOINTS = {
@@ -51,4 +49,8 @@ export const PROVIDER_INFO = {
     name: "Qwen (Dashscope)",
     apiKeyUrl: "https://dashscope.aliyun.com/",
   },
-} as const; 
+  Volces: {
+    name: "Volces (Volcengine)",
+    apiKeyUrl: "https://console.volcengine.com/ark/",
+  },
+} as const;

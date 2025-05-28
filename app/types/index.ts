@@ -27,10 +27,11 @@ export interface ApiKeyFormData {
   Qwen?: string;
   Deepseek?: string;
   Anthropic?: string;
+  Volces?: string;
 }
 
 // Provider types
-export type ProviderType = "OpenAI" | "Google" | "Qwen(DashScope)" | "Deepseek" | "Anthropic";
+export type ProviderType = "OpenAI" | "Google" | "Qwen(DashScope)" | "Deepseek" | "Anthropic" | "Volces";
 
 export interface ProviderInfo {
   name: string;

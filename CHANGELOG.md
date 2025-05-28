@@ -77,4 +77,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced chat export functionality
 - Plugin system for custom AI models
 - Advanced prompt templates
-- Separate thinking process visualization 
+- Separate thinking process visualization
+
+### Changed
+- Refactored chat client handlers into separate files per provider under `app/lib/chat-clients/`.
+- Improved error handling for API responses to include message body.
+- Added timeout for all client-side LLM API requests (15 seconds).
+- Enhanced SSE stream processing for Volces client to prevent message clipping.
+
+### Removed
+- Removed Proxy Settings UI and all related logic (client-side proxying not effective for `fetch`).
+  - Deleted `ProxySettingsForm.tsx`.
+  - Removed proxy settings from Zustand store and `AdvancedSettingsForm.tsx`.
+  - Deleted `PROXY_SETUP.md` and related constants.
+
+### Fixed
+- Corrected Gemini client handler to filter out empty messages, preventing an API error.
+- Resolved an issue where `anthropic-client.ts` was not correctly populated during refactoring. 

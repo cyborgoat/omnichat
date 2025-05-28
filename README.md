@@ -45,6 +45,7 @@ Omnichat is a versatile chat application that allows you to interact with variou
 - **Anthropic Claude**: Claude 3 Opus, Sonnet, and Haiku
 - **Deepseek**: DeepSeek Chat and Coder models
 - **Alibaba Qwen**: Qwen Turbo, Plus, Max, and QwQ Deep Thinking models (via Dashscope)
+- **Volces (Volcengine)**: DeepSeek-R1, DeepSeek-V3
 - **Extensible Architecture**: Easy to add new providers
 
 ### 🎨 **Modern UI/UX**
@@ -91,6 +92,7 @@ Omnichat is a versatile chat application that allows you to interact with variou
     - **Anthropic Claude**: Get your API key from [Anthropic Console](https://console.anthropic.com/)
     - **Deepseek**: Get your API key from [Deepseek Platform](https://platform.deepseek.com/)
     - **Alibaba Qwen**: Get your API key from [Alibaba Cloud Dashscope](https://dashscope.aliyun.com/)
+    - **Volces (Volcengine)**: Get your API key from [Volcengine Console](https://console.volcengine.com/ark/)
     
     Enter these keys in the Settings dialog (accessible via the settings icon in the side menu).
 

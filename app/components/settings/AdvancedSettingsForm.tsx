@@ -21,7 +21,6 @@ import { Trash2, RefreshCw, AlertTriangle } from "lucide-react";
 // Define the schema for advanced settings
 const advancedSchema = z.object({
   clearApiKeys: z.boolean(),
-  clearProxySettings: z.boolean(),
   clearEnabledModels: z.boolean(),
   clearChatSessions: z.boolean(),
   clearGlobalSystemPrompt: z.boolean(),
@@ -38,12 +37,10 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
   const [isClearing, setIsClearing] = useState(false);
   const { 
     apiKeys, 
-    proxySettings, 
     enabledModelIds, 
     chatSessions, 
     globalSystemPrompt,
     setApiKey,
-    setProxySettings,
     setEnabledModels,
     setGlobalSystemPrompt,
     availableModels
@@ -53,7 +50,6 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
     resolver: zodResolver(advancedSchema),
     defaultValues: {
       clearApiKeys: false,
-      clearProxySettings: false,
       clearEnabledModels: false,
       clearChatSessions: false,
       clearGlobalSystemPrompt: false,
@@ -76,10 +72,7 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
   const handleClearAllChange = (checked: boolean) => {
     form.setValue("clearAll", checked);
     form.setValue("clearApiKeys", checked);
-    form.setValue("clearProxySettings", checked);
     form.setValue("clearEnabledModels", checked);
-    form.setValue("clearChatSessions", checked);
-    form.setValue("clearGlobalSystemPrompt", checked);
   };
 
   const onSubmit = async (data: AdvancedFormValues) => {
@@ -102,11 +95,6 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
           setApiKey(provider, '');
         });
         clearedSections.push("API Keys");
-      }
-
-      if (data.clearProxySettings) {
-        setProxySettings({});
-        clearedSections.push("Proxy Settings");
       }
 
       if (data.clearEnabledModels) {
@@ -146,14 +134,12 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
 
   const getDataSummary = () => {
     const apiKeyCount = Object.keys(apiKeys).filter(key => apiKeys[key]).length;
-    const hasProxy = Object.keys(proxySettings).length > 0;
     const enabledModelCount = enabledModelIds.length;
     const chatSessionCount = chatSessions.length;
     const hasCustomPrompt = globalSystemPrompt !== "You are a helpful AI assistant. Respond in Markdown format.";
 
     return {
       apiKeyCount,
-      hasProxy,
       enabledModelCount,
       chatSessionCount,
       hasCustomPrompt,
@@ -165,7 +151,6 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
   // Determine if any clear action is selected
   const anyClearActionSelected = form.watch("clearAll") || 
                                  form.watch("clearApiKeys") || 
-                                 form.watch("clearProxySettings") || 
                                  form.watch("clearEnabledModels") || 
                                  form.watch("clearChatSessions") || 
                                  form.watch("clearGlobalSystemPrompt");
@@ -182,7 +167,6 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
           <p className="font-medium mb-2">Current Data Summary:</p>
           <ul className="space-y-1 text-xs">
             <li>• API Keys: {summary.apiKeyCount} configured</li>
-            <li>• Proxy Settings: {summary.hasProxy ? "Configured" : "Not configured"}</li>
             <li>• Enabled Models: {summary.enabledModelCount} of {availableModels.length}</li>
             <li>• Chat Sessions: {summary.chatSessionCount} sessions</li>
             <li>• System Prompt: {summary.hasCustomPrompt ? "Custom" : "Default"}</li>
@@ -234,31 +218,6 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                   <FormLabel className="text-sm">API Keys ({summary.apiKeyCount} configured)</FormLabel>
                   <FormDescription className="text-xs">
                     Clear all saved API keys for all providers
-                  </FormDescription>
-                </div>
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="clearProxySettings"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                <FormControl>
-                  <Checkbox
-                    checked={field.value || clearAll}
-                    onCheckedChange={(checked) => {
-                      field.onChange(checked);
-                      if (!clearAll) setIsDirty(true);
-                    }}
-                    disabled={clearAll}
-                  />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                  <FormLabel className="text-sm">Proxy Settings</FormLabel>
-                  <FormDescription className="text-xs">
-                    Reset proxy configuration to default (disabled)
                   </FormDescription>
                 </div>
               </FormItem>

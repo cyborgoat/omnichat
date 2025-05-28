@@ -44,21 +44,13 @@ export type ApiKeys = {
   [provider: string]: string | undefined;
 };
 
-export interface ProxySettings {
-  enabled?: boolean;
-  http?: string;
-  https?: string;
-  socks?: string;
-}
-
 // Define which parts of the state should be persisted
 interface PersistedChatState {
   isMenuCollapsed: boolean;
-  availableModels: Model[]; // Assuming models list can change or be configured by user later
-  enabledModelIds: string[]; // Track which models are enabled for display
+  availableModels: Model[];
+  enabledModelIds: string[];
   selectedModelId: string | null;
   apiKeys: ApiKeys;
-  proxySettings: ProxySettings;
   globalSystemPrompt: string;
   chatSessions: ChatSession[];
   activeChatSessionId: string | null;
@@ -73,7 +65,6 @@ export interface ChatState extends PersistedChatState {
   toggleMenu: () => void;
   selectModel: (modelId: string) => void;
   setApiKey: (provider: string, key: string) => void;
-  setProxySettings: (settings: ProxySettings) => void;
   setGlobalSystemPrompt: (prompt: string) => void;
   setEnabledModels: (modelIds: string[]) => void;
   createNewChatSession: (modelId?: string, name?: string) => string;
@@ -256,6 +247,19 @@ const initialModels: Model[] = [
     provider: "Qwen",
     apiKeyRequired: true,
   }, // QwQ 32B model
+  // Volces (Volcengine)
+  {
+    id: "deepseek-r1-250120",
+    name: "DeepSeek-R1",
+    provider: "Volces",
+    apiKeyRequired: true,
+  },
+  {
+    id: "deepseek-v3-250324", // Commented out until correct ID is known
+    name: "DeepSeek-V3",
+    provider: "Volces",
+    apiKeyRequired: true,
+  },
 ];
 
 export const useChatStore = create<ChatState>()(
@@ -267,7 +271,6 @@ export const useChatStore = create<ChatState>()(
       enabledModelIds: initialModels.map((m) => m.id), // Initially all models are enabled
       selectedModelId: initialModels[0]?.id || null,
       apiKeys: {},
-      proxySettings: {},
       globalSystemPrompt:
         "You are a helpful AI assistant. Respond in Markdown format.",
       chatSessions: [],
@@ -297,7 +300,6 @@ export const useChatStore = create<ChatState>()(
       },
       setApiKey: (provider, key) =>
         set((state) => ({ apiKeys: { ...state.apiKeys, [provider]: key } })),
-      setProxySettings: (settings) => set({ proxySettings: settings }),
       setGlobalSystemPrompt: (prompt) => set({ globalSystemPrompt: prompt }),
       setEnabledModels: (modelIds) => set({ enabledModelIds: modelIds }),
 
@@ -511,9 +513,10 @@ export const useChatStore = create<ChatState>()(
       name: "omnichat-storage",
       storage: createJSONStorage(() => localStorage as StateStorage),
       partialize: (state: ChatState): PersistedChatState => {
+        // Correctly destructure to exclude only transient fields
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { isBotThinking, isSendingMessage, ...rest } = state;
-        return rest;
+        return rest; // rest now correctly matches PersistedChatState
       },
     }
   )
