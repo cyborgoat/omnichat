@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import { create } from "zustand";
 import { createJSONStorage, persist, StateStorage } from "zustand/middleware";
+import { toast } from "sonner";
 
 // Types
 export interface Model {
@@ -60,6 +61,7 @@ export interface ChatState extends PersistedChatState {
   // UI State (transient, not persisted)
   isBotThinking: boolean;
   isSendingMessage: boolean;
+  currentAbortController: AbortController | null;
 
   // Actions (defined in the store creator)
   toggleMenu: () => void;
@@ -96,6 +98,8 @@ export interface ChatState extends PersistedChatState {
   setBotThinking: (isThinking: boolean) => void;
   setSendingMessage: (isSending: boolean) => void;
   addSystemMessageToActiveChat: (systemPrompt: string) => void;
+  setCurrentAbortController: (controller: AbortController | null) => void;
+  stopCurrentGeneration: () => void;
 }
 
 const initialModels: Model[] = [
@@ -196,6 +200,12 @@ const initialModels: Model[] = [
     provider: "Deepseek",
     apiKeyRequired: true,
   },
+  {
+    id: "deepseek-reasoner",
+    name: "DeepSeek reasoner",
+    provider: "Deepseek",
+    apiKeyRequired: true,
+  },
   // Qwen (Alibaba DashScope)
   {
     id: "qwen-turbo",
@@ -278,6 +288,7 @@ export const useChatStore = create<ChatState>()(
       // Initial Transient UI State
       isBotThinking: false,
       isSendingMessage: false,
+      currentAbortController: null,
 
       // Implementations
       toggleMenu: () =>
@@ -506,6 +517,19 @@ export const useChatStore = create<ChatState>()(
             };
           }
           return {}; // No change if no active session or empty/whitespace prompt
+        });
+      },
+      setCurrentAbortController: (controller) => set({ currentAbortController: controller }),
+      stopCurrentGeneration: () => {
+        const controller = get().currentAbortController;
+        if (controller) {
+          controller.abort();
+          toast.info("Chat generation stopped by user.");
+        }
+        set({
+          isBotThinking: false,
+          isSendingMessage: false,
+          currentAbortController: null,
         });
       },
     }),

@@ -24,7 +24,9 @@ interface ChatInputProps {
 export default function ChatInput({ onSendMessage }: ChatInputProps) {
   const [inputText, setInputText] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
-  const isSendingMessage = useChatStore((state) => state.isSendingMessage); // Get isSendingMessage from store
+  const isSendingMessage = useChatStore((state) => state.isSendingMessage);
+  const isBotThinking = useChatStore((state) => state.isBotThinking);
+  const stopCurrentGeneration = useChatStore((state) => state.stopCurrentGeneration);
 
   useEffect(() => {
     return () => {
@@ -164,16 +166,32 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
           disabled={isSendingMessage}
           className="flex-1 bg-muted border-border focus:ring-primary focus:border-primary text-foreground placeholder-muted-foreground rounded-full px-4 py-2"
         />
-        <Button onClick={handleSend} disabled={isSendingMessage || (!inputText.trim() && selectedFiles.length === 0)} className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 aspect-square">
-          {isSendingMessage ? (
-            <motion.div 
-              animate={{ rotate: 360 }} 
-              transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} 
-              className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full" 
-            />
-          ) : <Send size={20} />}
-          <span className="sr-only">{isSendingMessage ? "Sending" : "Send"}</span>
-        </Button>
+        {isBotThinking ? (
+          <Button 
+            onClick={stopCurrentGeneration} 
+            variant="outline" 
+            className="rounded-full bg-destructive hover:bg-destructive/80 text-destructive-foreground px-3 py-2 aspect-square flex items-center justify-center"
+            aria-label="Stop generating"
+          >
+            <motion.div className="w-5 h-5 flex items-center justify-center">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="#D1D5DB" aria-hidden="true">
+                <path d="M6 6h12v12H6z"></path>
+              </svg>
+            </motion.div>
+            <span className="sr-only">Stop Generating</span>
+          </Button>
+        ) : (
+          <Button onClick={handleSend} disabled={isSendingMessage || (!inputText.trim() && selectedFiles.length === 0)} className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 aspect-square">
+            {isSendingMessage ? (
+              <motion.div 
+                animate={{ rotate: 360 }} 
+                transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }} 
+                className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full" 
+              />
+            ) : <Send size={20} />}
+            <span className="sr-only">{isSendingMessage ? "Sending" : "Send"}</span>
+          </Button>
+        )}
       </div>
     </div>
   );
