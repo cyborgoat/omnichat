@@ -12,13 +12,19 @@ import {
   FormLabel,
   FormDescription,
 } from "@/components/ui/form";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useChatStore, ProxySettings } from "@/app/store/chatStore";
-import { Trash2, RefreshCw, AlertTriangle, Globe, Save, Database } from "lucide-react";
+import { Trash2, RefreshCw, Globe, Save, Database } from "lucide-react";
 
 // Separate schemas for different form sections
 const proxySchema = z.object({
@@ -56,7 +62,6 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
     setApiKey,
     setGlobalSystemPrompt,
     setProxySettings,
-    availableModels,
     syncAvailableModels
   } = useChatStore();
 
@@ -106,7 +111,7 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
       };
       
       setProxySettings(newProxySettings);
-      proxyForm.reset(data); // Reset form dirty state
+      proxyForm.reset(data);
       setIsDirty(false);
       toast.success("Proxy settings saved successfully!");
     } catch (error) {
@@ -212,314 +217,317 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                                  dataForm.watch("clearGlobalSystemPrompt");
 
   return (
-    <div className="space-y-8 py-4">
-      <div className="flex items-center gap-2 mb-6">
-        <AlertTriangle className="h-5 w-5 text-yellow-500" />
-        <h3 className="text-lg font-medium">Advanced Settings</h3>
-      </div>
-
-      {/* Proxy Settings Section */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 mb-4">
-          <Globe className="h-5 w-5 text-blue-500" />
-          <h4 className="text-md font-medium">Network & Proxy Settings</h4>
-        </div>
-        
-        <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
-          <Form {...proxyForm}>
-            <form onSubmit={proxyForm.handleSubmit(onSaveProxy)} className="space-y-4">
-              <FormField
-                control={proxyForm.control}
-                name="proxyEnabled"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="text-sm font-medium">Enable Proxy</FormLabel>
-                      <FormDescription className="text-xs text-muted-foreground">
-                        Route server-side API requests through a proxy server
-                      </FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
-
-              {proxyForm.watch("proxyEnabled") && (
-                <div className="space-y-4 ml-6 p-4 bg-white dark:bg-gray-900 rounded-md border">
-                  <FormField
-                    control={proxyForm.control}
-                    name="httpProxy"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm">HTTP Proxy</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="http://proxy.example.com:8080"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          HTTP proxy URL for non-secure connections
-                        </FormDescription>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={proxyForm.control}
-                    name="httpsProxy"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm">HTTPS Proxy</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="https://proxy.example.com:8080"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          HTTPS proxy URL for secure connections
-                        </FormDescription>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={proxyForm.control}
-                    name="socks5Proxy"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm">SOCKS5 Proxy</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="socks5://proxy.example.com:1080"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs">
-                          SOCKS5 proxy URL (recommended for better compatibility)
-                        </FormDescription>
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="text-xs text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/30 p-3 rounded-md">
-                    <p className="font-medium mb-1">💡 Priority Order:</p>
-                    <p>If multiple proxies are configured, they will be used in this order: SOCKS5 → HTTPS → HTTP</p>
-                  </div>
-
-                  <div className="text-xs text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-900/30 p-3 rounded-md mt-2">
-                    <p className="font-medium mb-1">⚠️ SOCKS5 Compatibility Note:</p>
-                    <p>If SOCKS5 proxy fails, try using HTTP proxy instead. Many SOCKS5 proxies also support HTTP protocol on port 8080 or similar.</p>
-                    <p className="mt-1">Example: If SOCKS5 is socks5://127.0.0.1:7890, try HTTP as http://127.0.0.1:7890</p>
-                  </div>
-                </div>
+    <div className="space-y-4 py-4">
+      <h3 className="text-md font-medium">Advanced Settings</h3>
+      
+      <Accordion type="multiple" defaultValue={["proxy", "data"]} className="w-full">
+        {/* Network & Proxy Settings */}
+        <AccordionItem value="proxy">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Globe className="h-4 w-4 text-blue-500" />
+              <span>Network & Proxy Settings</span>
+              {proxySettings.enabled && (
+                <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                  Active
+                </span>
               )}
-
-              <div className="flex gap-2 pt-2">
-                <Button 
-                  type="submit" 
-                  disabled={isSavingProxy || !proxySettingsChanged}
-                  className="flex items-center gap-2"
-                >
-                  {isSavingProxy ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4" />
+            </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <Form {...proxyForm}>
+              <form onSubmit={proxyForm.handleSubmit(onSaveProxy)} className="space-y-4">
+                <FormField
+                  control={proxyForm.control}
+                  name="proxyEnabled"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-sm font-medium">Enable Proxy</FormLabel>
+                        <FormDescription className="text-xs text-muted-foreground">
+                          Route server-side API requests through a proxy server
+                        </FormDescription>
+                      </div>
+                    </FormItem>
                   )}
-                  {isSavingProxy ? "Saving..." : "Save Proxy Settings"}
-                </Button>
-                
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => proxyForm.reset()}
-                  disabled={isSavingProxy}
-                >
-                  Reset
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </div>
-      </div>
+                />
 
-      <Separator />
-
-      {/* Data Management Section */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2 mb-4">
-          <Database className="h-5 w-5 text-red-500" />
-          <h4 className="text-md font-medium">Data Management</h4>
-        </div>
-
-        <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md mb-4">
-          <p className="font-medium mb-2">Current Data Summary:</p>
-          <ul className="space-y-1 text-xs">
-            <li>• API Keys: {summary.apiKeyCount} configured</li>
-            <li>• Enabled Models: {summary.enabledModelCount} of {availableModels.length}</li>
-            <li>• Chat Sessions: {summary.chatSessionCount} sessions</li>
-            <li>• System Prompt: {summary.hasCustomPrompt ? "Custom" : "Default"}</li>
-            <li>• Proxy: {proxySettings.enabled ? "Enabled" : "Disabled"}</li>
-          </ul>
-        </div>
-
-        <Form {...dataForm}>
-          <form onSubmit={dataForm.handleSubmit(onClearData)} className="space-y-4">
-            <FormField
-              control={dataForm.control}
-              name="clearAll"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-destructive/20 p-4">
-                  <FormControl>
-                    <Checkbox
-                      checked={field.value}
-                      onCheckedChange={handleClearAllChange}
+                {proxyForm.watch("proxyEnabled") && (
+                  <div className="space-y-4 ml-6 p-4 border rounded-md">
+                    <FormField
+                      control={proxyForm.control}
+                      name="httpProxy"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">HTTP Proxy</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="http://proxy.example.com:8080"
+                              {...field}
+                              value={field.value || ""}
+                            />
+                          </FormControl>
+                          <FormDescription className="text-xs">
+                            HTTP proxy URL for non-secure connections
+                          </FormDescription>
+                        </FormItem>
+                      )}
                     />
-                  </FormControl>
-                  <div className="space-y-1 leading-none">
-                    <FormLabel className="text-sm font-medium text-destructive">
-                      Clear All Data & Reload App
-                    </FormLabel>
-                    <FormDescription className="text-xs">
-                      This will completely reset the application to its initial state and reload the page.
-                    </FormDescription>
+
+                    <FormField
+                      control={proxyForm.control}
+                      name="httpsProxy"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">HTTPS Proxy</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="https://proxy.example.com:8080"
+                              {...field}
+                              value={field.value || ""}
+                            />
+                          </FormControl>
+                          <FormDescription className="text-xs">
+                            HTTPS proxy URL for secure connections
+                          </FormDescription>
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={proxyForm.control}
+                      name="socks5Proxy"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">SOCKS5 Proxy</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="socks5://proxy.example.com:1080"
+                              {...field}
+                              value={field.value || ""}
+                            />
+                          </FormControl>
+                          <FormDescription className="text-xs">
+                            SOCKS5 proxy URL (recommended for better compatibility)
+                          </FormDescription>
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md">
+                      <p className="font-medium mb-1">💡 Priority Order:</p>
+                      <p>SOCKS5 → HTTPS → HTTP</p>
+                    </div>
                   </div>
-                </FormItem>
-              )}
-            />
-
-            <div className="space-y-3">
-              <p className="text-sm font-medium">Or select specific sections to clear:</p>
-              
-              <FormField
-                control={dataForm.control}
-                name="clearApiKeys"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value || clearAll}
-                        onCheckedChange={field.onChange}
-                        disabled={clearAll}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="text-sm">API Keys ({summary.apiKeyCount} configured)</FormLabel>
-                      <FormDescription className="text-xs">
-                        Clear all saved API keys for all providers
-                      </FormDescription>
-                    </div>
-                  </FormItem>
                 )}
-              />
 
-              <FormField
-                control={dataForm.control}
-                name="clearEnabledModels"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value || clearAll}
-                        onCheckedChange={field.onChange}
-                        disabled={clearAll}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="text-sm">Model Selection & Sync ({summary.enabledModelCount} enabled)</FormLabel>
-                      <FormDescription className="text-xs">
-                        Reset to all models enabled and sync with latest available models
-                      </FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
+                <div className="flex gap-2 pt-2">
+                  <Button 
+                    type="submit" 
+                    disabled={isSavingProxy || !proxySettingsChanged}
+                    className="flex items-center gap-2"
+                    size="sm"
+                  >
+                    {isSavingProxy ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Save className="h-4 w-4" />
+                    )}
+                    {isSavingProxy ? "Saving..." : "Save"}
+                  </Button>
+                  
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => proxyForm.reset()}
+                    disabled={isSavingProxy}
+                  >
+                    Reset
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </AccordionContent>
+        </AccordionItem>
 
-              <FormField
-                control={dataForm.control}
-                name="clearChatSessions"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value || clearAll}
-                        onCheckedChange={field.onChange}
-                        disabled={clearAll}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="text-sm text-destructive">Chat Sessions ({summary.chatSessionCount} sessions)</FormLabel>
-                      <FormDescription className="text-xs">
-                        ⚠️ This will permanently delete all your chat history
-                      </FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={dataForm.control}
-                name="clearGlobalSystemPrompt"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value || clearAll}
-                        onCheckedChange={field.onChange}
-                        disabled={clearAll}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel className="text-sm">Global System Prompt</FormLabel>
-                      <FormDescription className="text-xs">
-                        Reset to default system prompt
-                      </FormDescription>
-                    </div>
-                  </FormItem>
-                )}
-              />
+        {/* Data Management */}
+        <AccordionItem value="data">
+          <AccordionTrigger className="hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Database className="h-4 w-4 text-red-500" />
+              <div className="text-left">
+                <div>Data Management</div>
+                <div className="text-xs text-muted-foreground font-normal">
+                  {summary.apiKeyCount} API keys • {summary.chatSessionCount} sessions • {summary.enabledModelCount} models
+                </div>
+              </div>
             </div>
+          </AccordionTrigger>
+          <AccordionContent>
+            <Form {...dataForm}>
+              <form onSubmit={dataForm.handleSubmit(onClearData)} className="space-y-4">
+                <FormField
+                  control={dataForm.control}
+                  name="clearAll"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border border-destructive/20 p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={handleClearAllChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="text-sm font-medium text-destructive">
+                          Clear All Data & Reload App
+                        </FormLabel>
+                        <FormDescription className="text-xs">
+                          This will completely reset the application to its initial state and reload the page.
+                        </FormDescription>
+                      </div>
+                    </FormItem>
+                  )}
+                />
 
-            <div className="pt-4 flex gap-2">
-              <Button 
-                type="submit" 
-                variant="destructive" 
-                disabled={isClearing || !anyClearActionSelected}
-                className="flex items-center gap-2"
-              >
-                {isClearing ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Trash2 className="h-4 w-4" />
-                )}
-                {isClearing ? "Clearing..." : "Clear Selected Data"}
-              </Button>
-              
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => dataForm.reset()}
-                disabled={isClearing}
-              >
-                Reset Form
-              </Button>
-            </div>
-          </form>
-        </Form>
+                <Separator />
 
-        <div className="text-xs text-muted-foreground bg-yellow-50 dark:bg-yellow-950/20 p-3 rounded-md border border-yellow-200 dark:border-yellow-800">
-          <p className="font-medium mb-1 text-yellow-800 dark:text-yellow-200">⚠️ Warning:</p>
-          <p className="text-yellow-700 dark:text-yellow-300">
-            Data clearing actions cannot be undone. Make sure you have backed up any important data before proceeding.
-          </p>
-        </div>
-      </div>
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">Or select specific sections to clear:</p>
+                  
+                  <FormField
+                    control={dataForm.control}
+                    name="clearApiKeys"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value || clearAll}
+                            onCheckedChange={field.onChange}
+                            disabled={clearAll}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm">API Keys ({summary.apiKeyCount} configured)</FormLabel>
+                          <FormDescription className="text-xs">
+                            Clear all saved API keys for all providers
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={dataForm.control}
+                    name="clearEnabledModels"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value || clearAll}
+                            onCheckedChange={field.onChange}
+                            disabled={clearAll}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm">Model Selection ({summary.enabledModelCount} enabled)</FormLabel>
+                          <FormDescription className="text-xs">
+                            Reset to all models enabled and sync with latest available models
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={dataForm.control}
+                    name="clearChatSessions"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value || clearAll}
+                            onCheckedChange={field.onChange}
+                            disabled={clearAll}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm text-destructive">Chat Sessions ({summary.chatSessionCount} sessions)</FormLabel>
+                          <FormDescription className="text-xs">
+                            ⚠️ This will permanently delete all your chat history
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={dataForm.control}
+                    name="clearGlobalSystemPrompt"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value || clearAll}
+                            onCheckedChange={field.onChange}
+                            disabled={clearAll}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel className="text-sm">Global System Prompt</FormLabel>
+                          <FormDescription className="text-xs">
+                            Reset to default system prompt
+                          </FormDescription>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="pt-4 flex gap-2">
+                  <Button 
+                    type="submit" 
+                    variant="destructive" 
+                    size="sm"
+                    disabled={isClearing || !anyClearActionSelected}
+                    className="flex items-center gap-2"
+                  >
+                    {isClearing ? (
+                      <RefreshCw className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                    {isClearing ? "Clearing..." : "Clear Selected Data"}
+                  </Button>
+                  
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => dataForm.reset()}
+                    disabled={isClearing}
+                  >
+                    Reset Form
+                  </Button>
+                </div>
+
+                <div className="text-xs text-muted-foreground bg-yellow-50 dark:bg-yellow-950/20 p-3 rounded-md border border-yellow-200 dark:border-yellow-800">
+                  <p className="font-medium mb-1 text-yellow-800 dark:text-yellow-200">⚠️ Warning:</p>
+                  <p className="text-yellow-700 dark:text-yellow-300">
+                    Data clearing actions cannot be undone. Make sure you have backed up any important data before proceeding.
+                  </p>
+                </div>
+              </form>
+            </Form>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
     </div>
   );
 }

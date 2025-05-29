@@ -19,7 +19,7 @@ export async function* handleAnthropicClientSide(
   request: ChatRequest
 ): AsyncGenerator<string> {
   const controller = new AbortController();
-  const { setCurrentAbortController, proxySettings } = useChatStore.getState();
+  const { setCurrentAbortController, proxySettings, modelSettings } = useChatStore.getState();
   setCurrentAbortController(controller);
 
   try {
@@ -52,6 +52,7 @@ export async function* handleAnthropicClientSide(
       messages: filteredMessages,
       apiKey: request.apiKey.trim(),
       proxySettings,
+      maxTokens: modelSettings.maxTokens,
       ...(request.systemPrompt &&
         request.systemPrompt.trim() && {
           systemPrompt: request.systemPrompt.trim(),

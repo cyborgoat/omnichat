@@ -29,6 +29,7 @@ export async function* handleDeepseekClientSide(
       messages: deepseekMessages,
       stream: modelSettings.streamEnabled,
       temperature: modelSettings.temperature,
+      max_tokens: modelSettings.maxTokens,
     };
 
     const response = await fetch("https://api.deepseek.com/v1/chat/completions", {

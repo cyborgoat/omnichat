@@ -2,6 +2,12 @@
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { useChatStore } from "@/app/store/chatStore";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
@@ -98,7 +104,7 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
         Choose which models appear in the sidebar model selection menu. Only selected models will be available for new chats.
       </p>
 
-      <div className="space-y-4 max-h-96 overflow-y-auto">
+      <Accordion type="multiple" defaultValue={Object.keys(groupedModels)} className="w-full">
         {Object.entries(groupedModels).map(([provider, models]) => {
           const providerModelIds = models.map(m => m.id);
           const selectedProviderModels = selectedModelIds.filter(id => providerModelIds.includes(id));
@@ -106,49 +112,52 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
           const isProviderPartiallySelected = selectedProviderModels.length > 0 && selectedProviderModels.length < providerModelIds.length;
 
           return (
-            <div key={provider} className="space-y-2">
-              <div className="flex items-center space-x-2 pb-1 border-b border-border">
-                <Checkbox
-                  id={`provider-${provider}`}
-                  checked={isProviderFullySelected}
-                  ref={(el) => {
-                    if (el) {
-                      // Access the underlying input element for indeterminate state
-                      const input = el.querySelector('input');
-                      if (input) input.indeterminate = isProviderPartiallySelected;
-                    }
-                  }}
-                  onCheckedChange={(checked) => handleProviderToggle(provider, checked as boolean)}
-                />
-                <label 
-                  htmlFor={`provider-${provider}`}
-                  className="text-sm font-medium cursor-pointer"
-                >
-                  {provider} ({selectedProviderModels.length}/{providerModelIds.length})
-                </label>
-              </div>
-              
-              <div className="pl-6 space-y-2">
-                {models.map((model) => (
-                  <div key={model.id} className="flex items-center space-x-2">
+            <AccordionItem key={provider} value={provider}>
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center justify-between w-full mr-4">
+                  <div className="flex items-center space-x-2">
                     <Checkbox
-                      id={model.id}
-                      checked={selectedModelIds.includes(model.id)}
-                      onCheckedChange={(checked) => handleModelToggle(model.id, checked as boolean)}
+                      checked={isProviderFullySelected}
+                      ref={(el) => {
+                        if (el) {
+                          const input = el.querySelector('input');
+                          if (input) input.indeterminate = isProviderPartiallySelected;
+                        }
+                      }}
+                      onCheckedChange={(checked) => handleProviderToggle(provider, checked as boolean)}
+                      onClick={(e) => e.stopPropagation()}
                     />
-                    <label 
-                      htmlFor={model.id}
-                      className="text-xs cursor-pointer flex-1"
-                    >
-                      {model.name}
-                    </label>
+                    <span className="text-sm font-medium">{provider}</span>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <span className="text-xs text-muted-foreground">
+                    {selectedProviderModels.length}/{providerModelIds.length}
+                  </span>
+                </div>
+              </AccordionTrigger>
+              
+              <AccordionContent>
+                <div className="space-y-2 ml-6">
+                  {models.map((model) => (
+                    <div key={model.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={model.id}
+                        checked={selectedModelIds.includes(model.id)}
+                        onCheckedChange={(checked) => handleModelToggle(model.id, checked as boolean)}
+                      />
+                      <label 
+                        htmlFor={model.id}
+                        className="text-xs cursor-pointer flex-1"
+                      >
+                        {model.name}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
           );
         })}
-      </div>
+      </Accordion>
 
       <div className="pt-2 flex justify-between items-center">
         <div className="text-xs text-muted-foreground">
@@ -158,6 +167,7 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
           onClick={handleSave} 
           disabled={!hasChanges || selectedModelIds.length === 0}
           className="text-xs"
+          size="sm"
         >
           Save Model Settings
         </Button>

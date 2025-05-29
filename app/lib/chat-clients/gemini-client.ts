@@ -49,7 +49,7 @@ export async function* handleGeminiClientSide(
         temperature: modelSettings.temperature,
         topK: 40,
         topP: 0.95,
-        maxOutputTokens: 2048,
+        maxOutputTokens: modelSettings.maxTokens,
         thinkingConfig: {
           includeThoughts: true,
         },

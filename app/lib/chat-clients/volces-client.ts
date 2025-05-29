@@ -30,7 +30,7 @@ export async function* handleVolcesClientSide(
       stream: modelSettings.streamEnabled,
       parameters: {
         temperature: modelSettings.temperature,
-        max_new_tokens: 4096,
+        max_new_tokens: modelSettings.maxTokens,
       },
     };
 

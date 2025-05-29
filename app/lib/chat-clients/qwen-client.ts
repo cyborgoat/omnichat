@@ -50,7 +50,7 @@ export async function* handleQwenClientSide(
       messages: qwenMessages,
       stream: modelSettings.streamEnabled, // Crucial for thinking mode on Qwen3
       temperature: modelSettings.temperature,
-      max_tokens: 4096, // Default, can be adjusted
+      max_tokens: modelSettings.maxTokens, // Use from store
       // The `enable_thinking` parameter is not standard OpenAI and likely ignored by compatible endpoint.
       // We rely on prompt engineering above for Qwen3 models.
     };

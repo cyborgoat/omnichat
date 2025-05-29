@@ -19,12 +19,13 @@ interface AnthropicRequestBody {
   systemPrompt?: string;
   apiKey: string;
   proxySettings?: ProxySettings;
+  maxTokens?: number;
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body: AnthropicRequestBody = await request.json();
-    const { modelId, messages, systemPrompt, apiKey, proxySettings } = body;
+    const { modelId, messages, systemPrompt, apiKey, proxySettings, maxTokens } = body;
 
     // Validate required fields
     if (!apiKey) {
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
     // Prepare the request body
     const requestBody = {
       model: modelId,
-      max_tokens: 4096,
+      max_tokens: maxTokens || 4096,
       messages: apiMessages,
       stream: true,
       ...(systemPrompt && systemPrompt.trim() && { 

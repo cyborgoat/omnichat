@@ -24,6 +24,7 @@ export async function* handleOpenAIClientSide(
       messages: openaiMessages,
       stream: modelSettings.streamEnabled,
       temperature: modelSettings.temperature,
+      max_tokens: modelSettings.maxTokens,
     };
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {

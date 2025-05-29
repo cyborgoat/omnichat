@@ -55,6 +55,14 @@ export type ProxySettings = {
 export type ModelSettings = {
   streamEnabled: boolean;
   temperature: number;
+  maxTokens: number;
+};
+
+// Default model settings, used for initialization and hydration normalization
+const DEFAULT_MODEL_SETTINGS: ModelSettings = {
+  streamEnabled: true,
+  temperature: 0.7,
+  maxTokens: 4096,
 };
 
 // Define which parts of the state should be persisted
@@ -339,7 +347,7 @@ export const useChatStore = create<ChatState>()(
       chatSessions: [],
       activeChatSessionId: null,
       proxySettings: { enabled: false },
-      modelSettings: { streamEnabled: true, temperature: 0.7 },
+      modelSettings: DEFAULT_MODEL_SETTINGS, // Use the constant for initial state
       // Initial Transient UI State
       isBotThinking: false,
       isSendingMessage: false,
@@ -612,7 +620,7 @@ export const useChatStore = create<ChatState>()(
       partialize: (state: ChatState): PersistedChatState => {
         // Correctly destructure to exclude only transient fields
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { isBotThinking, isSendingMessage, ...rest } = state;
+        const { isBotThinking, isSendingMessage, currentAbortController, ...rest } = state; // Added currentAbortController
         return rest; // rest now correctly matches PersistedChatState
       },
     }
@@ -634,12 +642,45 @@ export const useModelsByProvider = (provider: string) => {
 
 // Creates an initial session if none exist after hydration.
 if (typeof window !== "undefined") {
-  useChatStore.persist.onFinishHydration((state: ChatState) => {
-    if (state.chatSessions.length === 0) {
+  useChatStore.persist.onFinishHydration(() => {
+    // Get the current state from the store after hydration and merging
+    const currentState = useChatStore.getState();
+
+    // 1. Handle initial chat session creation if none exist
+    if (currentState.chatSessions.length === 0) {
       console.log(
         "No chat sessions found after hydration, creating initial session."
       );
-      useChatStore.getState().createNewChatSession();
+      currentState.createNewChatSession(); // This action calls set internally
+    }
+
+    // 2. Normalize modelSettings to ensure all fields are present and valid
+    const currentModelSettings = currentState.modelSettings;
+    
+    const normalizedModelSettings: ModelSettings = {
+      streamEnabled: (typeof currentModelSettings?.streamEnabled === 'boolean')
+        ? currentModelSettings.streamEnabled
+        : DEFAULT_MODEL_SETTINGS.streamEnabled,
+      temperature: (typeof currentModelSettings?.temperature === 'number' && !isNaN(currentModelSettings.temperature))
+        ? currentModelSettings.temperature
+        : DEFAULT_MODEL_SETTINGS.temperature,
+      maxTokens: (typeof currentModelSettings?.maxTokens === 'number' && !isNaN(currentModelSettings.maxTokens) && currentModelSettings.maxTokens > 0)
+        ? currentModelSettings.maxTokens
+        : DEFAULT_MODEL_SETTINGS.maxTokens,
+    };
+
+    // Only update the store if the normalized settings are different from the current ones
+    // or if currentModelSettings was initially missing/invalid.
+    if (
+      !currentModelSettings || // If currentModelSettings was undefined, null, etc.
+      currentModelSettings.streamEnabled !== normalizedModelSettings.streamEnabled ||
+      currentModelSettings.temperature !== normalizedModelSettings.temperature ||
+      currentModelSettings.maxTokens !== normalizedModelSettings.maxTokens
+    ) {
+      // Directly set the entire modelSettings object to its normalized version.
+      // This ensures that modelSettings is always a complete object with valid properties.
+      useChatStore.setState({ modelSettings: normalizedModelSettings });
+      console.log("ModelSettings normalized after hydration:", normalizedModelSettings);
     }
   });
 }

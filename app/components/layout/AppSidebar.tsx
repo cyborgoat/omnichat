@@ -16,6 +16,7 @@ import {
     Zap,
     ZapOff,
     Thermometer,
+    ListChecks,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Model, useChatStore, useEnabledModels } from "@/app/store/chatStore";
@@ -340,6 +341,38 @@ export function AppSidebar() {
                                             value={[modelSettings.temperature]}
                                             onValueChange={(value) => setModelSettings({ temperature: value[0] })}
                                             className="w-full"
+                                        />
+                                    </div>
+
+                                    {/* Max Tokens Control */}
+                                    <div className="px-1 mb-3">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <Label htmlFor="max-tokens-input" className="text-xs font-medium text-sidebar-foreground/70 flex items-center gap-1.5">
+                                                <ListChecks size={12} />
+                                                Max Tokens
+                                            </Label>
+                                            <span className="text-xs text-sidebar-foreground/60">{modelSettings.maxTokens}</span>
+                                        </div>
+                                        <Input
+                                            id="max-tokens-input"
+                                            type="number"
+                                            min={1}
+                                            step={1}
+                                            value={modelSettings.maxTokens}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value, 10);
+                                                if (!isNaN(val) && val > 0) {
+                                                    setModelSettings({ maxTokens: val });
+                                                }
+                                            }}
+                                            onBlur={(e) => { // Ensure a valid value on blur
+                                                let val = parseInt(e.target.value, 10);
+                                                if (isNaN(val) || val <= 0) {
+                                                    val = 4096; // Default to 4096 if invalid
+                                                    setModelSettings({ maxTokens: val });
+                                                }
+                                            }}
+                                            className="w-full bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground focus:ring-sidebar-ring focus:border-sidebar-ring text-xs h-8 p-1.5"
                                         />
                                     </div>
                                     
