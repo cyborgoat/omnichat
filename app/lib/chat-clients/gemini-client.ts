@@ -1,12 +1,12 @@
 import { ChatRequest } from "./types";
 import { useChatStore } from "@/app/store/chatStore";
 
-// Gemini client-side handler (non-streaming for simplicity)
+// Gemini client-side handler with streaming support
 export async function* handleGeminiClientSide(
   request: ChatRequest
 ): AsyncGenerator<string> {
   const controller = new AbortController();
-  const { setCurrentAbortController } = useChatStore.getState();
+  const { setCurrentAbortController, modelSettings } = useChatStore.getState();
   setCurrentAbortController(controller);
 
   try {
@@ -46,7 +46,7 @@ export async function* handleGeminiClientSide(
         },
       ],
       generationConfig: {
-        temperature: 0.7,
+        temperature: modelSettings.temperature,
         topK: 40,
         topP: 0.95,
         maxOutputTokens: 2048,
@@ -61,7 +61,12 @@ export async function* handleGeminiClientSide(
       }),
     };
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${request.modelId}:generateContent?key=${request.apiKey}`;
+    // Use streaming endpoint if streaming is enabled
+    const endpoint = modelSettings.streamEnabled 
+      ? 'streamGenerateContent?alt=sse' 
+      : 'generateContent';
+    
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${request.modelId}:${endpoint}&key=${request.apiKey}`;
 
     const response = await fetch(url, {
       method: "POST",
@@ -81,23 +86,74 @@ export async function* handleGeminiClientSide(
       );
     }
 
-    const responseData = await response.json();
+    if (modelSettings.streamEnabled) {
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response body");
+      
+      const decoder = new TextDecoder();
+      let buffer = "";
 
-    if (responseData.candidates && responseData.candidates.length > 0) {
-      const candidate = responseData.candidates[0];
-      if (
-        candidate.content &&
-        candidate.content.parts &&
-        candidate.content.parts.length > 0
-      ) {
-        for (const part of candidate.content.parts) {
-          if (part.text) {
-            if (part.thought) {
-              yield `__THINKING_START__\n${part.text}\n__THINKING_END__\n`;
-            } else {
-              // Yield the entire non-thought part text at once
-              if (part.text && part.text.trim() !== "") {
-                yield part.text;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        
+        // Process complete lines
+        let lineEndIndex;
+        while ((lineEndIndex = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.substring(0, lineEndIndex).trim();
+          buffer = buffer.substring(lineEndIndex + 1);
+          
+          if (!line || !line.startsWith('data: ')) continue;
+          
+          const data = line.substring(6);
+          if (data === '[DONE]') return;
+          
+          try {
+            const parsedData = JSON.parse(data);
+            
+            // Process the streaming response
+            if (parsedData.candidates && parsedData.candidates.length > 0) {
+              const candidate = parsedData.candidates[0];
+              if (candidate.content && candidate.content.parts) {
+                for (const part of candidate.content.parts) {
+                  if (part.text) {
+                    if (part.thought) {
+                      yield `__THINKING_START__\n${part.text}\n__THINKING_END__\n`;
+                    } else {
+                      yield part.text;
+                    }
+                  }
+                }
+              }
+            }
+          } catch (e) {
+            console.error("Failed to parse streaming data:", e);
+          }
+        }
+      }
+    } else {
+      // Non-streaming response (existing code)
+      const responseData = await response.json();
+
+      if (responseData.candidates && responseData.candidates.length > 0) {
+        const candidate = responseData.candidates[0];
+        if (
+          candidate.content &&
+          candidate.content.parts &&
+          candidate.content.parts.length > 0
+        ) {
+          for (const part of candidate.content.parts) {
+            if (part.text) {
+              if (part.thought) {
+                yield `__THINKING_START__\n${part.text}\n__THINKING_END__\n`;
+              } else {
+                // Yield the entire non-thought part text at once
+                if (part.text && part.text.trim() !== "") {
+                  yield part.text;
+                }
               }
             }
           }

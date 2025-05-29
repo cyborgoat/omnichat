@@ -46,3 +46,6 @@ next-env.d.ts
 
 # Cursor
 .cursor/
+
+# IOS Built
+*/gen/

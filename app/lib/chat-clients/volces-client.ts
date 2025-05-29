@@ -6,136 +6,173 @@ export async function* handleVolcesClientSide(
   request: ChatRequest
 ): AsyncGenerator<string> {
   const controller = new AbortController();
-  const { setCurrentAbortController } = useChatStore.getState();
+  const { setCurrentAbortController, modelSettings } = useChatStore.getState();
   setCurrentAbortController(controller);
 
   try {
-    const apiMessages = request.messages.map((msg) => ({
-      role: msg.role === "model" ? "assistant" : msg.role,
-      content: msg.content,
-    }));
+    const volcesMessages = request.messages
+      .filter((msg) => msg.role === "user" || msg.role === "assistant")
+      .map((msg) => ({
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+      }));
 
     if (request.systemPrompt) {
-      const systemIndex = apiMessages.findIndex((m) => m.role === "system");
-      if (systemIndex !== -1) {
-        apiMessages[systemIndex].content = request.systemPrompt;
-      } else {
-        apiMessages.unshift({ role: "system", content: request.systemPrompt });
-      }
+      volcesMessages.unshift({
+        role: "system" as "user",
+        content: request.systemPrompt,
+      });
     }
 
-    // Note: The endpoint URL might need to be verified from Volcengine documentation.
-    // Using a common pattern for OpenAI-compatible APIs.
-    const response = await fetch(
-      "https://ark.cn-beijing.volces.com/api/v3/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${request.apiKey}`,
-        },
-        body: JSON.stringify({
-          model: request.modelId, // Should be 'deepseek-r1' or 'deepseek-v3'
-          messages: apiMessages,
-          stream: true,
-          temperature: 0.7,
-          max_tokens: 2048, // Adjust as needed
-        }),
-        signal: controller.signal,
-      }
-    );
+    const payload = {
+      model: request.modelId,
+      messages: volcesMessages,
+      stream: modelSettings.streamEnabled,
+      parameters: {
+        temperature: modelSettings.temperature,
+        max_new_tokens: 4096,
+      },
+    };
+
+    // Volcengine API endpoint
+    const url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${request.apiKey}`,
+      },
+      body: JSON.stringify(payload),
+      signal: controller.signal,
+    });
 
     if (!response.ok) {
-      const errorBody = await response.json().catch(() => response.text());
-      const errorMessage =
-        typeof errorBody === "string"
-          ? errorBody
-          : errorBody?.error?.message || JSON.stringify(errorBody);
+      const errorBody = await response.json();
       throw new Error(
-        `Volces API error: ${response.status} ${response.statusText} - ${errorMessage}`
+        `Volces API error: ${response.status} ${response.statusText} - ${
+          errorBody.error?.message || JSON.stringify(errorBody)
+        }`
       );
     }
 
-    if (!response.body) {
-      throw new Error("Volces response body is null");
-    }
+    if (modelSettings.streamEnabled) {
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let isInReasoningBlock = false;
+      let reasoningContent = "";
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-
-      if (value) {
-        buffer += decoder.decode(value, { stream: true });
+      if (!reader) {
+        throw new Error("Response body is not readable");
       }
 
-      let eolIndex;
-      while ((eolIndex = buffer.indexOf('\n')) >= 0) {
-        const line = buffer.substring(0, eolIndex).trim();
-        buffer = buffer.substring(eolIndex + 1);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-        if (line.startsWith("data: ")) {
-          const dataJson = line.substring(6).trim();
-          if (dataJson === "[DONE]") return;
-          if (!dataJson) continue;
+        buffer += decoder.decode(value, { stream: true });
 
-          try {
-            const parsedData = JSON.parse(dataJson);
-            const choice = parsedData.choices?.[0];
+        let lineEndIndex;
+        while ((lineEndIndex = buffer.indexOf("\n")) >= 0) {
+          const line = buffer.substring(0, lineEndIndex).trim();
+          buffer = buffer.substring(lineEndIndex + 1);
 
-            if (choice?.delta?.content) {
-              yield choice.delta.content;
+          if (line.startsWith("data: ")) {
+            const dataContent = line.substring(6);
+            if (dataContent === "[DONE]") {
+              return;
             }
 
-            // Handle reasoning content for Volces models
-            if (choice?.delta?.reasoning_content) {
-              yield `__THINKING_START__${choice.delta.reasoning_content}__THINKING_END__`;
-            }
+            try {
+              const parsedData = JSON.parse(dataContent);
+              if (parsedData.choices && parsedData.choices.length > 0) {
+                const choice = parsedData.choices[0];
+                
+                // Handle reasoning content for DeepSeek-R1
+                if (choice.delta && choice.delta.reasoning_content) {
+                  yield `__THINKING_START__\n${choice.delta.reasoning_content}\n__THINKING_END__\n`;
+                }
+                
+                // Handle regular content
+                if (choice.delta && choice.delta.content) {
+                  const content = choice.delta.content;
+                  
+                  // Also handle <Thought> blocks if present
+                  if (content.includes("<Thought>")) {
+                    isInReasoningBlock = true;
+                    const startIdx = content.indexOf("<Thought>");
+                    if (startIdx > 0) {
+                      yield content.substring(0, startIdx);
+                    }
+                    reasoningContent = content.substring(startIdx);
+                  } else if (content.includes("</Thought>")) {
+                    const endIdx = content.indexOf("</Thought>") + 10;
+                    reasoningContent += content.substring(0, endIdx);
+                    isInReasoningBlock = false;
 
-            if (choice?.finish_reason === "stop") return;
-          } catch (e) {
-            console.error(
-              "Error parsing Volces SSE event:",
-              e,
-              "Raw line:",
-              line
-            );
+                    // Format and yield the reasoning content
+                    yield `__THINKING_START__\n${reasoningContent.replace(/<\/?Thought>/g, "").trim()}\n__THINKING_END__\n`;
+
+                    // Yield any content after the reasoning block
+                    if (endIdx < content.length) {
+                      yield content.substring(endIdx);
+                    }
+                    reasoningContent = "";
+                  } else if (isInReasoningBlock) {
+                    reasoningContent += content;
+                  } else {
+                    yield content;
+                  }
+                }
+              }
+            } catch (parseError) {
+              console.error("Error parsing SSE data:", parseError);
+            }
           }
         }
       }
-      if (done) break;
-    }
+    } else {
+      // Non-streaming response
+      const responseData = await response.json();
+      if (responseData.choices && responseData.choices.length > 0) {
+        const choice = responseData.choices[0];
+        
+        // Handle reasoning content for non-streaming
+        if (choice.message?.reasoning_content) {
+          yield `__THINKING_START__\n${choice.message.reasoning_content}\n__THINKING_END__\n`;
+        }
+        
+        // Handle regular content
+        if (choice.message?.content) {
+          const content = choice.message.content;
+          
+          // Process <Thought> blocks if present
+          const thoughtRegex = /<Thought>([\s\S]*?)<\/Thought>/g;
+          let lastIndex = 0;
+          let match;
 
-    // Process any remaining data in the buffer after the stream is done
-    if (buffer.trim()) {
-      const lines = buffer.split('\n'); 
-      for (const line of lines) {
-        const trimmedLine = line.trim();
-        if (trimmedLine.startsWith("data: ")) {
-          const dataJson = trimmedLine.substring(6).trim();
-          if (dataJson === "[DONE]") return; 
-          if (!dataJson) continue;
+          while ((match = thoughtRegex.exec(content)) !== null) {
+            // Yield content before the thought block
+            if (match.index > lastIndex) {
+              yield content.substring(lastIndex, match.index);
+            }
 
-          try {
-            const parsedData = JSON.parse(dataJson);
-            const choice = parsedData.choices?.[0];
-            if (choice?.delta?.content) {
-              yield choice.delta.content;
-            }
-            if (choice?.delta?.reasoning_content) {
-              yield `__THINKING_START__${choice.delta.reasoning_content}__THINKING_END__`;
-            }
-            if (choice?.finish_reason === "stop") return;
-          } catch (e) {
-            console.error("Error parsing final Volces SSE event from buffer:", e, "Raw data line:", dataJson);
+            // Yield the thought content
+            yield `__THINKING_START__\n${match[1].trim()}\n__THINKING_END__\n`;
+
+            lastIndex = match.index + match[0].length;
+          }
+
+          // Yield any remaining content
+          if (lastIndex < content.length) {
+            yield content.substring(lastIndex);
           }
         }
       }
     }
   } catch (error) {
-    if ((error as Error).name === 'AbortError') {
+    if ((error as Error).name === "AbortError") {
       console.log("Fetch aborted by user (Volces).");
       return;
     }

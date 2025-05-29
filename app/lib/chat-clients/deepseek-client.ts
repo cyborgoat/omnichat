@@ -1,173 +1,161 @@
 import { ChatRequest } from "./types";
 import { useChatStore } from "@/app/store/chatStore";
 
-interface DeepseekApiMessage {
-  role: string;
-  content: string;
-}
-
-interface DeepseekRequestBody {
-  model: string;
-  messages: DeepseekApiMessage[];
-  stream: boolean;
-  max_tokens: number;
-  temperature?: number; // Optional temperature
-}
-
 // Deepseek client-side handler
 export async function* handleDeepseekClientSide(
   request: ChatRequest
 ): AsyncGenerator<string> {
   const controller = new AbortController();
-  const { setCurrentAbortController } = useChatStore.getState();
+  const { setCurrentAbortController, modelSettings } = useChatStore.getState();
   setCurrentAbortController(controller);
-  
+
   try {
-    const apiMessages = request.messages.map((msg) => ({
-      role: msg.role === "model" ? "assistant" : msg.role,
-      content: msg.content,
-    }));
+    const deepseekMessages = request.messages
+      .filter((msg) => msg.role === "user" || msg.role === "assistant")
+      .map((msg) => ({
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+      }));
 
     if (request.systemPrompt) {
-      const systemIndex = apiMessages.findIndex((m) => m.role === "system");
-      if (systemIndex !== -1) {
-        apiMessages[systemIndex].content = request.systemPrompt;
-      } else {
-        apiMessages.unshift({ role: "system", content: request.systemPrompt });
-      }
+      deepseekMessages.unshift({
+        role: "system" as "user",
+        content: request.systemPrompt,
+      });
     }
 
-    // Note: deepseek-reasoner might not support temperature.
-    // The docs say: "setting temperature, top_p, presence_penalty, frequency_penalty will not trigger an error but will also have no effect."
-    // So, we can keep it for other deepseek models, it won't harm reasoner.
-    const body: DeepseekRequestBody = {
+    const payload = {
       model: request.modelId,
-      messages: apiMessages,
-      stream: true,
-      max_tokens: request.modelId === "deepseek-reasoner" ? 8192 : 2048, // Max for reasoner final answer is 8k, CoT is 32k (not controlled by this)
+      messages: deepseekMessages,
+      stream: modelSettings.streamEnabled,
+      temperature: modelSettings.temperature,
     };
 
-    if (request.modelId !== "deepseek-reasoner") {
-      body.temperature = 0.7;
-    }
-
-    const response = await fetch("https://api.deepseek.com/chat/completions", {
+    const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${request.apiKey}`,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
       signal: controller.signal,
     });
 
     if (!response.ok) {
-      const errorBody = await response.json().catch(() => response.text());
-      const errorMessage =
-        typeof errorBody === "string"
-          ? errorBody
-          : errorBody?.error?.message || JSON.stringify(errorBody);
+      const errorBody = await response.json();
       throw new Error(
-        `Deepseek API error: ${response.status} ${response.statusText} - ${errorMessage}`
+        `Deepseek API error: ${response.status} ${response.statusText} - ${
+          errorBody.error?.message || JSON.stringify(errorBody)
+        }`
       );
     }
 
-    if (!response.body) {
-      throw new Error("Deepseek response body is null");
-    }
+    if (modelSettings.streamEnabled) {
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let isInReasoningBlock = false;
+      let reasoningContent = "";
 
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (value) {
-        buffer += decoder.decode(value, { stream: true });
+      if (!reader) {
+        throw new Error("Response body is not readable");
       }
 
-      let eolIndex;
-      while ((eolIndex = buffer.indexOf("\n")) >= 0) {
-        const line = buffer.substring(0, eolIndex).trim();
-        buffer = buffer.substring(eolIndex + 1);
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-        if (line.startsWith("data: ")) {
-          const dataJson = line.substring(6).trim();
-          if (dataJson === "[DONE]") {
-            return;
-          }
-          if (!dataJson) continue;
+        buffer += decoder.decode(value, { stream: true });
 
-          try {
-            const parsedData = JSON.parse(dataJson);
-            const choice = parsedData.choices?.[0];
+        let lineEndIndex;
+        while ((lineEndIndex = buffer.indexOf("\n")) >= 0) {
+          const line = buffer.substring(0, lineEndIndex).trim();
+          buffer = buffer.substring(lineEndIndex + 1);
 
-            if (choice?.delta?.reasoning_content) {
-              yield `__THINKING_START__${choice.delta.reasoning_content}__THINKING_END__`;
-            }
-            if (choice?.delta?.content) {
-              yield choice.delta.content;
-            }
-
-            if (choice?.finish_reason === "stop") {
+          if (line.startsWith("data: ")) {
+            const dataContent = line.substring(6);
+            if (dataContent === "[DONE]") {
               return;
             }
-          } catch (e) {
-            console.error(
-              "Error parsing Deepseek SSE event:",
-              e,
-              "Raw line:",
-              line
-            );
+
+            try {
+              const parsedData = JSON.parse(dataContent);
+              if (parsedData.choices && parsedData.choices.length > 0) {
+                const choice = parsedData.choices[0];
+                if (choice.delta && choice.delta.content) {
+                  const content = choice.delta.content;
+
+                  // Detect reasoning blocks for models like deepseek-reasoner
+                  if (content.includes("<Thought>")) {
+                    isInReasoningBlock = true;
+                    const startIdx = content.indexOf("<Thought>");
+                    if (startIdx > 0) {
+                      yield content.substring(0, startIdx);
+                    }
+                    reasoningContent = content.substring(startIdx);
+                  } else if (content.includes("</Thought>")) {
+                    const endIdx = content.indexOf("</Thought>") + 10;
+                    reasoningContent += content.substring(0, endIdx);
+                    isInReasoningBlock = false;
+
+                    // Format and yield the reasoning content
+                    yield `__THINKING_START__\n${reasoningContent.replace(/<\/?Thought>/g, "").trim()}\n__THINKING_END__\n`;
+
+                    // Yield any content after the reasoning block
+                    if (endIdx < content.length) {
+                      yield content.substring(endIdx);
+                    }
+                    reasoningContent = "";
+                  } else if (isInReasoningBlock) {
+                    reasoningContent += content;
+                  } else {
+                    yield content;
+                  }
+                }
+              }
+            } catch (parseError) {
+              console.error("Error parsing SSE data:", parseError);
+            }
           }
         }
       }
-      if (done) break;
-    }
+    } else {
+      // Non-streaming response
+      const responseData = await response.json();
+      if (responseData.choices && responseData.choices.length > 0) {
+        const messageContent = responseData.choices[0].message?.content;
+        if (messageContent) {
+          // Process reasoning blocks for non-streaming
+          const thoughtRegex = /<Thought>([\s\S]*?)<\/Thought>/g;
+          let lastIndex = 0;
+          let match;
 
-    // Process any remaining data in the buffer
-    if (buffer.trim()) {
-      const lines = buffer.split("\n");
-      for (const line of lines) {
-        const trimmedLine = line.trim();
-        if (trimmedLine.startsWith("data: ")) {
-          const dataJson = trimmedLine.substring(6).trim();
-          if (dataJson === "[DONE]") {
-            return;
+          while ((match = thoughtRegex.exec(messageContent)) !== null) {
+            // Yield content before the thought block
+            if (match.index > lastIndex) {
+              yield messageContent.substring(lastIndex, match.index);
+            }
+
+            // Yield the thought content
+            yield `__THINKING_START__\n${match[1].trim()}\n__THINKING_END__\n`;
+
+            lastIndex = match.index + match[0].length;
           }
-          if (!dataJson) continue;
 
-          try {
-            const parsedData = JSON.parse(dataJson);
-            const choice = parsedData.choices?.[0];
-            if (choice?.delta?.reasoning_content) {
-              yield `__THINKING_START__${choice.delta.reasoning_content}__THINKING_END__`;
-            }
-            if (choice?.delta?.content) {
-              yield choice.delta.content;
-            }
-            if (choice?.finish_reason === "stop") {
-              return;
-            }
-          } catch (e) {
-            console.error(
-              "Error parsing final Deepseek SSE event from buffer:",
-              e,
-              "Raw data line:",
-              dataJson
-            );
+          // Yield any remaining content
+          if (lastIndex < messageContent.length) {
+            yield messageContent.substring(lastIndex);
           }
         }
       }
     }
   } catch (error) {
-    if ((error as Error).name === 'AbortError') {
+    if ((error as Error).name === "AbortError") {
       console.log("Fetch aborted by user (Deepseek).");
       return;
     }
     throw error;
   } finally {
-    // No need to clear timeoutId as it was removed
     if (useChatStore.getState().currentAbortController === controller) {
       setCurrentAbortController(null);
     }

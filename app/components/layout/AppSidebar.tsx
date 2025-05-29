@@ -13,6 +13,9 @@ import {
     Sun,
     Menu as MenuIcon,
     X as XIcon,
+    Zap,
+    ZapOff,
+    Thermometer,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Model, useChatStore, useEnabledModels } from "@/app/store/chatStore";
@@ -28,6 +31,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { Label } from "@/components/ui/label";
 import {
     Dialog,
     DialogClose,
@@ -70,6 +76,8 @@ export function AppSidebar() {
         setGlobalSystemPrompt,
         addSystemMessageToActiveChat,
         updateSessionSystemPrompt,
+        modelSettings,
+        setModelSettings,
     } = useChatStore();
 
     const enabledModels = useEnabledModels();
@@ -298,6 +306,43 @@ export function AppSidebar() {
                                             </SelectContent>
                                         </Select>
                                     </div>
+                                    
+                                    {/* Stream Toggle */}
+                                    <div className="px-1 mb-2">
+                                        <div className="flex items-center justify-between">
+                                            <Label htmlFor="stream-toggle" className="text-xs font-medium text-sidebar-foreground/70 flex items-center gap-1.5">
+                                                {modelSettings.streamEnabled ? <Zap size={12} /> : <ZapOff size={12} />}
+                                                Streaming
+                                            </Label>
+                                            <Switch
+                                                id="stream-toggle"
+                                                checked={modelSettings.streamEnabled}
+                                                onCheckedChange={(checked) => setModelSettings({ streamEnabled: checked })}
+                                                className="scale-75"
+                                            />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Temperature Control */}
+                                    <div className="px-1 mb-3">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <Label htmlFor="temperature-slider" className="text-xs font-medium text-sidebar-foreground/70 flex items-center gap-1.5">
+                                                <Thermometer size={12} />
+                                                Temperature
+                                            </Label>
+                                            <span className="text-xs text-sidebar-foreground/60">{modelSettings.temperature.toFixed(1)}</span>
+                                        </div>
+                                        <Slider
+                                            id="temperature-slider"
+                                            min={0}
+                                            max={2}
+                                            step={0.1}
+                                            value={[modelSettings.temperature]}
+                                            onValueChange={(value) => setModelSettings({ temperature: value[0] })}
+                                            className="w-full"
+                                        />
+                                    </div>
+                                    
                                     <div className="px-1 mt-2 mb-1">
                                         <SettingsDialog isMenuCollapsed={isMenuCollapsed} />
                                     </div>

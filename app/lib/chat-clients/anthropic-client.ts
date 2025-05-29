@@ -9,6 +9,9 @@ const VALID_ANTHROPIC_MODELS = [
   "claude-3-5-sonnet-20241022",
   "claude-3-5-sonnet-20240620",
   "claude-3-5-haiku-20241022",
+  // Reasoning models
+  "claude-3-5-sonnet-reasoning-20250106",
+  "claude-3-5-haiku-reasoning-20250106",
 ];
 
 // Anthropic client-side handler
@@ -136,44 +139,84 @@ export async function* handleAnthropicClientSide(
             try {
               const parsedData = JSON.parse(dataContent);
 
-              // Handle content block delta events (text streaming)
-              if (
-                parsedData.type === "content_block_delta" &&
-                parsedData.delta?.type === "text_delta" &&
-                parsedData.delta?.text
-              ) {
-                yield parsedData.delta.text;
+              // Handle errors in the stream
+              if (parsedData.error) {
+                throw new Error(parsedData.error);
               }
 
-              // Handle message stop event
-              if (parsedData.type === "message_stop") {
+              // Handle different Anthropic event types
+              if (parsedData.type === "content_block_delta") {
+                // Regular text streaming
+                if (parsedData.delta?.type === "text_delta" && parsedData.delta?.text) {
+                  yield parsedData.delta.text;
+                }
+              } else if (parsedData.type === "content_block_start") {
+                // Content block started (for reasoning models, this might include reasoning content)
+                if (parsedData.content_block?.type === "text" && parsedData.content_block?.text) {
+                  yield parsedData.content_block.text;
+                }
+              } else if (parsedData.type === "message_delta") {
+                // Handle message-level deltas (for usage info, stop reasons, etc.)
+                if (parsedData.delta?.stop_reason) {
+                  console.log("Message stopped with reason:", parsedData.delta.stop_reason);
+                }
+                if (parsedData.usage) {
+                  console.log("Token usage:", parsedData.usage);
+                }
+              } else if (parsedData.type === "message_stop") {
+                // End of message
+                console.log("Message stream completed");
                 return;
+              } else if (parsedData.type === "ping") {
+                // Heartbeat, ignore
+                continue;
               }
 
-              // Log other event types for debugging
+              // Log other event types for debugging (especially useful for reasoning models)
               if (
                 parsedData.type &&
                 ![
+                  "message_start",
                   "content_block_start",
-                  "content_block_delta",
+                  "content_block_delta", 
                   "content_block_stop",
                   "message_delta",
+                  "message_stop",
+                  "ping"
                 ].includes(parsedData.type)
               ) {
                 console.log(
-                  "Anthropic SSE event:",
+                  "Unknown Anthropic SSE event:",
                   parsedData.type,
                   parsedData
                 );
               }
             } catch (parseError) {
+              // Check if this is a structured error response
+              if (dataContent.includes("error")) {
+                try {
+                  const errorData = JSON.parse(dataContent);
+                  if (errorData.error) {
+                    throw new Error(errorData.error);
+                  }
+                } catch {
+                  // Fall through to generic error handling
+                }
+              }
+              
               console.error(
                 "Error parsing Anthropic SSE event:",
                 parseError,
                 "Raw data:",
                 dataContent
               );
-              // Continue processing other events instead of throwing
+              
+              // For non-critical parse errors, continue processing
+              // Only throw if it looks like a critical error
+              if (dataContent.toLowerCase().includes("error") || 
+                  dataContent.toLowerCase().includes("failed")) {
+                throw new Error(`Stream parsing error: ${dataContent.slice(0, 100)}`);
+              }
             }
           }
         }

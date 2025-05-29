@@ -1,5 +1,5 @@
 [package]
-name = "Omnichat"
+name = "omnichat"
 version = "1.1.2"
 description = "Omnichat, an all-in-one LLM chat application"
 authors = ["cyborgoat"]

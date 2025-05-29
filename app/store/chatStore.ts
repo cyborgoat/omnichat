@@ -52,6 +52,11 @@ export type ProxySettings = {
   socks5?: string;
 };
 
+export type ModelSettings = {
+  streamEnabled: boolean;
+  temperature: number;
+};
+
 // Define which parts of the state should be persisted
 interface PersistedChatState {
   isMenuCollapsed: boolean;
@@ -63,6 +68,7 @@ interface PersistedChatState {
   chatSessions: ChatSession[];
   activeChatSessionId: string | null;
   proxySettings: ProxySettings;
+  modelSettings: ModelSettings;
 }
 
 export interface ChatState extends PersistedChatState {
@@ -78,6 +84,7 @@ export interface ChatState extends PersistedChatState {
   setGlobalSystemPrompt: (prompt: string) => void;
   setEnabledModels: (modelIds: string[]) => void;
   setProxySettings: (settings: ProxySettings) => void;
+  setModelSettings: (settings: Partial<ModelSettings>) => void;
   createNewChatSession: (modelId?: string, name?: string) => string;
   setActiveChatSession: (sessionId: string) => void;
   deleteChatSession: (sessionId: string) => void;
@@ -332,6 +339,7 @@ export const useChatStore = create<ChatState>()(
       chatSessions: [],
       activeChatSessionId: null,
       proxySettings: { enabled: false },
+      modelSettings: { streamEnabled: true, temperature: 0.7 },
       // Initial Transient UI State
       isBotThinking: false,
       isSendingMessage: false,
@@ -361,6 +369,10 @@ export const useChatStore = create<ChatState>()(
       setGlobalSystemPrompt: (prompt) => set({ globalSystemPrompt: prompt }),
       setEnabledModels: (modelIds) => set({ enabledModelIds: modelIds }),
       setProxySettings: (settings) => set({ proxySettings: settings }),
+      setModelSettings: (settings) => 
+        set((state) => ({ 
+          modelSettings: { ...state.modelSettings, ...settings } 
+        })),
 
       createNewChatSession: (modelIdToUse, name) => {
         const newSessionId = uuidv4(); // Use uuidv4 to generate a unique ID

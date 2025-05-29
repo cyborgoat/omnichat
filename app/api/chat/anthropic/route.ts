@@ -94,6 +94,7 @@ export async function POST(request: NextRequest) {
       '--silent',
       '--show-error',
       '--fail-with-body',
+      '--no-buffer',
       'https://api.anthropic.com/v1/messages'
     ];
 
@@ -112,57 +113,113 @@ export async function POST(request: NextRequest) {
     // Execute curl command
     const curlProcess = spawn('curl', curlArgs);
 
-    let responseData = '';
+    let buffer = '';
     let errorData = '';
+    let hasStreamStarted = false;
 
-    curlProcess.stdout.on('data', (chunk) => {
-      const data = chunk.toString();
-      responseData += data;
-      writer.write(new TextEncoder().encode(data));
+    curlProcess.stdout.on('data', async (chunk) => {
+      try {
+        const data = chunk.toString();
+        buffer += data;
+
+        // Process complete lines from the buffer
+        let lineEndIndex;
+        while ((lineEndIndex = buffer.indexOf('\n')) >= 0) {
+          const line = buffer.substring(0, lineEndIndex).trim();
+          buffer = buffer.substring(lineEndIndex + 1);
+
+          // Skip empty lines
+          if (!line) continue;
+
+          // Check if this is an SSE data line
+          if (line.startsWith('data: ')) {
+            hasStreamStarted = true;
+            // Forward the SSE line as-is to maintain proper format
+            await writer.write(new TextEncoder().encode(line + '\n\n'));
+          } else if (line.startsWith('event: ')) {
+            // Forward event lines as well
+            await writer.write(new TextEncoder().encode(line + '\n'));
+          } else if (hasStreamStarted) {
+            // If we've started streaming and encounter a non-SSE line, it might be error data
+            try {
+              const errorResponse = JSON.parse(line);
+              if (errorResponse.error) {
+                await writer.write(new TextEncoder().encode(`data: ${JSON.stringify({ error: errorResponse.error.message || 'API Error' })}\n\n`));
+              }
+            } catch {
+              // If it's not JSON, treat as raw error
+              console.error('Unexpected data from Anthropic API:', line);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error processing stdout data:', error);
+      }
     });
 
     curlProcess.stderr.on('data', (chunk) => {
       errorData += chunk.toString();
     });
 
-    curlProcess.on('close', (code) => {
-      if (code === 0) {
-        writer.close();
-      } else {
-        let errorMessage = 'Request failed';
-        
-        if (responseData) {
-          try {
-            const errorResponse = JSON.parse(responseData);
-            if (errorResponse.error?.message) {
-              errorMessage = errorResponse.error.message;
-            }
-          } catch {
-            errorMessage = responseData.slice(0, 200);
+    curlProcess.on('close', async (code) => {
+      try {
+        if (code === 0) {
+          // Send final SSE end marker
+          if (hasStreamStarted) {
+            await writer.write(new TextEncoder().encode('data: [DONE]\n\n'));
           }
+          writer.close();
+        } else {
+          let errorMessage = 'Request failed';
+          
+          // Try to parse error from remaining buffer or stderr
+          if (buffer.trim()) {
+            try {
+              const errorResponse = JSON.parse(buffer.trim());
+              if (errorResponse.error?.message) {
+                errorMessage = errorResponse.error.message;
+              }
+            } catch {
+              errorMessage = buffer.trim().slice(0, 200);
+            }
+          } else if (errorData.trim()) {
+            errorMessage = `Curl error: ${errorData.trim()}`;
+          }
+          
+          await writer.write(new TextEncoder().encode(`data: ${JSON.stringify({ 
+            error: errorMessage,
+            details: errorData.trim()
+          })}\n\n`));
+          writer.close();
         }
-        
-        writer.write(new TextEncoder().encode(JSON.stringify({ 
-          error: errorMessage,
-          details: errorData.trim()
-        })));
+      } catch (error) {
+        console.error('Error in close handler:', error);
         writer.close();
       }
     });
 
-    curlProcess.on('error', (error) => {
-      writer.write(new TextEncoder().encode(JSON.stringify({ 
-        error: `Failed to execute curl: ${error.message}`,
-        suggestion: "Make sure curl is installed and available in PATH"
-      })));
-      writer.close();
+    curlProcess.on('error', async (error) => {
+      try {
+        await writer.write(new TextEncoder().encode(`data: ${JSON.stringify({ 
+          error: `Failed to execute curl: ${error.message}`,
+          suggestion: "Make sure curl is installed and available in PATH"
+        })}\n\n`));
+        writer.close();
+      } catch (writeError) {
+        console.error('Error writing error message:', writeError);
+        writer.close();
+      }
     });
 
     return new NextResponse(readable, {
       status: 200,
       headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Transfer-Encoding': 'chunked',
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST',
+        'Access-Control-Allow-Headers': 'Content-Type',
       },
     });
 
