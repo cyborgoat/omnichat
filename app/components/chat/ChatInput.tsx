@@ -129,6 +129,7 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
         <HoverCard openDelay={200} closeDelay={100}>
           <HoverCardTrigger asChild>
             <label
+              htmlFor="file-upload"
               onClick={(e) => e.preventDefault()}
               className={`cursor-pointer p-2 rounded-full hover:bg-muted 
               ${selectedFiles.length >= MAX_TOTAL_FILES ? 'opacity-50 cursor-not-allowed' : ''}

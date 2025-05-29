@@ -43,8 +43,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
+    <html lang="en" suppressHydrationWarning className="h-full">
+      <body className={`${inter.className} h-full`}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -52,7 +52,9 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <EnvironmentLogger />
-          {children}
+          <div className="h-full">
+            {children}
+          </div>
           <Toaster position="top-right" />
         </ThemeProvider>
       </body>

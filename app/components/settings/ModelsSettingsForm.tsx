@@ -117,6 +117,7 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
                 <div className="flex items-center justify-between w-full mr-4">
                   <div className="flex items-center space-x-2">
                     <Checkbox
+                      id={`provider-${provider}`}
                       checked={isProviderFullySelected}
                       ref={(el) => {
                         if (el) {
@@ -127,7 +128,13 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
                       onCheckedChange={(checked) => handleProviderToggle(provider, checked as boolean)}
                       onClick={(e) => e.stopPropagation()}
                     />
-                    <span className="text-sm font-medium">{provider}</span>
+                    <label 
+                      htmlFor={`provider-${provider}`}
+                      className="text-sm font-medium cursor-pointer"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {provider}
+                    </label>
                   </div>
                   <span className="text-xs text-muted-foreground">
                     {selectedProviderModels.length}/{providerModelIds.length}

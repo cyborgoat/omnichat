@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.3] - 2025-05-30
+
+### Fixed
+- **Critical Application Stability**: Resolved application crashes and screen disappearing issues
+  - Fixed TypeScript compilation errors in all API routes (`Promise<unknown>` → `Promise<NextResponse>`)
+  - Corrected layout height collapse causing 0-pixel viewport dimensions
+  - Enhanced HTML/body height inheritance chain for proper full-screen layout
+- **Accessibility Improvements**: Comprehensive accessibility compliance fixes
+  - Eliminated duplicate HTML IDs between LeftSideMenu and AppSidebar components
+  - Added proper label associations for all form elements and checkboxes
+  - Enhanced screen reader compatibility and browser autofill functionality
+- **UI Layout Stability**: Ensured consistent cross-platform layout behavior
+  - Added explicit height classes to html, body, and root container elements
+  - Fixed SidebarProvider height inheritance for proper responsive behavior
+  - Improved form accessibility with explicit htmlFor attributes
+
+### Technical Improvements
+- **Robust Error Handling**: Enhanced TypeScript return type safety across all API endpoints
+- **Cross-Platform Compatibility**: Unified height management for both web and desktop builds
+- **Standards Compliance**: Full HTML accessibility standards adherence with unique element IDs
+- **Developer Experience**: Eliminated compilation warnings and build failures
+
+### Changed
+- Enhanced all API route files with proper TypeScript return types
+- Improved global CSS with explicit height inheritance rules
+- Strengthened component accessibility with unique identifier patterns
+
 ## [1.0.0] - 2025-05-25
 
 ### Added

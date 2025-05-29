@@ -300,14 +300,14 @@ export default function LeftSideMenu() {
               <div className="mt-auto pt-3 border-t border-sidebar-border/70 flex-shrink-0">
                 <div>
                   <label
-                    htmlFor="system-prompt-input"
+                    htmlFor="left-system-prompt-input"
                     className="block text-xs font-medium text-sidebar-foreground/70 mb-1 px-1"
                   >
                     Global System Prompt
                   </label>
                   <div className="flex flex-col relative w-full p-1">
                     <Textarea
-                      id="system-prompt-input"
+                      id="left-system-prompt-input"
                       placeholder="Set a global system prompt..."
                       value={unsavedGlobalSystemPrompt}
                       onChange={(e) =>
@@ -355,7 +355,7 @@ export default function LeftSideMenu() {
 
                 <div className="my-3">
                   <label
-                    htmlFor="model-select"
+                    htmlFor="left-model-select"
                     className="block text-xs font-medium text-sidebar-foreground/70 mb-1 px-1"
                   >
                     Select Model
@@ -365,7 +365,7 @@ export default function LeftSideMenu() {
                     onValueChange={selectModel}
                   >
                     <SelectTrigger
-                      id="model-select"
+                      id="left-model-select"
                       className="w-full bg-sidebar-accent/50 border-sidebar-border text-sidebar-foreground focus:ring-sidebar-ring focus:border-sidebar-ring text-xs"
                     >
                       <SelectValue placeholder="Choose a model" />

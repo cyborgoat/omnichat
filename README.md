@@ -2,6 +2,8 @@
 
 Omnichat is a versatile chat application that allows you to interact with various Large Language Models (LLMs) from different providers, all within a single, intuitive interface. Available as both a web application and a native desktop app, it's built with Next.js, Tailwind CSS, Shadcn UI, and Tauri for a modern, responsive, and cross-platform experience.
 
+> **Latest Update (v1.1.3)**: Critical stability improvements including fixed TypeScript compilation errors, resolved layout collapse issues, and enhanced accessibility compliance for a more robust user experience.
+
 ## Features
 
 ### 🚀 **Desktop & Web Application**

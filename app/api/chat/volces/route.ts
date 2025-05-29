@@ -13,20 +13,21 @@ interface ProxySettings {
   socks5?: string;
 }
 
-interface AnthropicRequestBody {
+interface VolcesRequestBody {
   modelId: string;
   messages: ChatMessage[];
   systemPrompt?: string;
   apiKey: string;
   proxySettings?: ProxySettings;
-  maxTokens?: number;
   streamEnabled?: boolean;
+  temperature?: number;
+  maxTokens?: number;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body: AnthropicRequestBody = await request.json();
-    const { modelId, messages, systemPrompt, apiKey, proxySettings, maxTokens, streamEnabled = true } = body;
+    const body: VolcesRequestBody = await request.json();
+    const { modelId, messages, systemPrompt, apiKey, proxySettings, streamEnabled = true, temperature = 0.7, maxTokens = 4096 } = body;
 
     // Validate required fields
     if (!apiKey) {
@@ -50,27 +51,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Filter and format messages for Anthropic API
-    const filteredMessages = messages
-      .filter((msg: ChatMessage) => msg.role === "user" || msg.role === "assistant")
-      .filter((msg: ChatMessage) => msg.content && msg.content.trim().length > 0);
-    
-    const apiMessages = filteredMessages.map((msg: ChatMessage) => ({
-      role: msg.role as "user" | "assistant",
-      content: msg.content.trim(),
-    }));
+    // Filter and format messages for Volces API
+    const volcesMessages = messages
+      .filter((msg) => msg.role === "user" || msg.role === "assistant")
+      .map((msg) => ({
+        role: msg.role as "user" | "assistant",
+        content: msg.content,
+      }));
 
-    // Validate messages
-    if (apiMessages.length === 0) {
-      return NextResponse.json(
-        { error: 'At least one non-empty message is required' },
-        { status: 400 }
-      );
+    if (systemPrompt) {
+      volcesMessages.unshift({
+        role: "system" as "user",
+        content: systemPrompt,
+      });
     }
 
-    if (apiMessages[apiMessages.length - 1].role !== 'user') {
+    // Validate messages
+    if (volcesMessages.length === 0) {
       return NextResponse.json(
-        { error: 'The last message must be from the user' },
+        { error: 'At least one non-empty message is required' },
         { status: 400 }
       );
     }
@@ -78,26 +77,28 @@ export async function POST(request: NextRequest) {
     // Prepare the request body
     const requestBody = {
       model: modelId,
-      max_tokens: maxTokens || 4096,
-      messages: apiMessages,
+      messages: volcesMessages,
       stream: streamEnabled,
-      ...(systemPrompt && systemPrompt.trim() && { 
-        system: systemPrompt.trim() 
-      }),
+      parameters: {
+        temperature,
+        max_new_tokens: maxTokens,
+      },
     };
+
+    // Volcengine API endpoint
+    const url = "https://ark.cn-beijing.volces.com/api/v3/chat/completions";
 
     // Build curl command
     const curlArgs = [
       '-X', 'POST',
       '-H', 'Content-Type: application/json',
-      '-H', `x-api-key: ${apiKey}`,
-      '-H', 'anthropic-version: 2023-06-01',
+      '-H', `Authorization: Bearer ${apiKey}`,
       '-d', JSON.stringify(requestBody),
       '--silent',
       '--show-error',
       '--fail-with-body',
       '--no-buffer',
-      'https://api.anthropic.com/v1/messages'
+      url
     ];
 
     // Add proxy configuration if enabled
@@ -108,6 +109,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Create response stream
+    const { readable, writable } = new TransformStream();
+    const writer = writable.getWriter();
+
     // Execute curl command
     const curlProcess = spawn('curl', curlArgs);
 
@@ -115,9 +120,7 @@ export async function POST(request: NextRequest) {
     let errorData = '';
 
     if (streamEnabled) {
-      // Handle streaming response (existing SSE logic)
-      const { readable, writable } = new TransformStream();
-      const writer = writable.getWriter();
+      // Handle streaming response (existing code)
       let hasStreamStarted = false;
 
       curlProcess.stdout.on('data', async (chunk) => {
@@ -137,8 +140,22 @@ export async function POST(request: NextRequest) {
             // Check if this is an SSE data line
             if (line.startsWith('data: ')) {
               hasStreamStarted = true;
-              // Forward the SSE line as-is to maintain proper format
-              await writer.write(new TextEncoder().encode(line + '\n\n'));
+              
+              // Validate that the data is properly formatted JSON
+              const dataContent = line.substring(6).trim();
+              if (dataContent === '[DONE]') {
+                // Forward the end marker as-is
+                await writer.write(new TextEncoder().encode(line + '\n\n'));
+              } else {
+                try {
+                  // Validate JSON format before forwarding
+                  JSON.parse(dataContent);
+                  await writer.write(new TextEncoder().encode(line + '\n\n'));
+                } catch {
+                  console.error('Invalid JSON in SSE data from Volces:', dataContent);
+                  // Skip malformed JSON data
+                }
+              }
             } else if (line.startsWith('event: ')) {
               // Forward event lines as well
               await writer.write(new TextEncoder().encode(line + '\n'));
@@ -151,7 +168,7 @@ export async function POST(request: NextRequest) {
                 }
               } catch {
                 // If it's not JSON, treat as raw error
-                console.error('Unexpected data from Anthropic API:', line);
+                console.error('Unexpected data from Volces API:', line);
               }
             }
           }
@@ -285,7 +302,7 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error("Error in Anthropic API route:", error);
+    console.error("Error in Volces API route:", error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
