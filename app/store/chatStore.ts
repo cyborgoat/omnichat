@@ -45,6 +45,13 @@ export type ApiKeys = {
   [provider: string]: string | undefined;
 };
 
+export type ProxySettings = {
+  enabled: boolean;
+  http?: string;
+  https?: string;
+  socks5?: string;
+};
+
 // Define which parts of the state should be persisted
 interface PersistedChatState {
   isMenuCollapsed: boolean;
@@ -55,6 +62,7 @@ interface PersistedChatState {
   globalSystemPrompt: string;
   chatSessions: ChatSession[];
   activeChatSessionId: string | null;
+  proxySettings: ProxySettings;
 }
 
 export interface ChatState extends PersistedChatState {
@@ -69,6 +77,7 @@ export interface ChatState extends PersistedChatState {
   setApiKey: (provider: string, key: string) => void;
   setGlobalSystemPrompt: (prompt: string) => void;
   setEnabledModels: (modelIds: string[]) => void;
+  setProxySettings: (settings: ProxySettings) => void;
   createNewChatSession: (modelId?: string, name?: string) => string;
   setActiveChatSession: (sessionId: string) => void;
   deleteChatSession: (sessionId: string) => void;
@@ -100,6 +109,7 @@ export interface ChatState extends PersistedChatState {
   addSystemMessageToActiveChat: (systemPrompt: string) => void;
   setCurrentAbortController: (controller: AbortController | null) => void;
   stopCurrentGeneration: () => void;
+  syncAvailableModels: () => void;
 }
 
 const initialModels: Model[] = [
@@ -170,20 +180,56 @@ const initialModels: Model[] = [
   },
   // Anthropic Claude
   {
+    id: "claude-opus-4-20250514",
+    name: "Claude Opus 4",
+    provider: "Anthropic",
+    apiKeyRequired: true,
+  },
+  {
+    id: "claude-sonnet-4-20250514", 
+    name: "Claude Sonnet 4",
+    provider: "Anthropic",
+    apiKeyRequired: true,
+  },
+  {
+    id: "claude-3-7-sonnet-20250219",
+    name: "Claude Sonnet 3.7",
+    provider: "Anthropic",
+    apiKeyRequired: true,
+  },
+  {
+    id: "claude-3-5-sonnet-20241022",
+    name: "Claude Sonnet 3.5 v2",
+    provider: "Anthropic",
+    apiKeyRequired: true,
+  },
+  {
+    id: "claude-3-5-sonnet-20240620",
+    name: "Claude Sonnet 3.5",
+    provider: "Anthropic",
+    apiKeyRequired: true,
+  },
+  {
+    id: "claude-3-5-haiku-20241022",
+    name: "Claude Haiku 3.5",
+    provider: "Anthropic",
+    apiKeyRequired: true,
+  },
+  {
     id: "claude-3-opus-20240229",
-    name: "Claude 3 Opus",
+    name: "Claude Opus 3",
     provider: "Anthropic",
     apiKeyRequired: true,
   },
   {
     id: "claude-3-sonnet-20240229",
-    name: "Claude 3 Sonnet",
+    name: "Claude Sonnet 3",
     provider: "Anthropic",
     apiKeyRequired: true,
   },
   {
     id: "claude-3-haiku-20240307",
-    name: "Claude 3 Haiku",
+    name: "Claude Haiku 3",
     provider: "Anthropic",
     apiKeyRequired: true,
   },
@@ -285,6 +331,7 @@ export const useChatStore = create<ChatState>()(
         "You are a helpful AI assistant. Respond in Markdown format.",
       chatSessions: [],
       activeChatSessionId: null,
+      proxySettings: { enabled: false },
       // Initial Transient UI State
       isBotThinking: false,
       isSendingMessage: false,
@@ -313,6 +360,7 @@ export const useChatStore = create<ChatState>()(
         set((state) => ({ apiKeys: { ...state.apiKeys, [provider]: key } })),
       setGlobalSystemPrompt: (prompt) => set({ globalSystemPrompt: prompt }),
       setEnabledModels: (modelIds) => set({ enabledModelIds: modelIds }),
+      setProxySettings: (settings) => set({ proxySettings: settings }),
 
       createNewChatSession: (modelIdToUse, name) => {
         const newSessionId = uuidv4(); // Use uuidv4 to generate a unique ID
@@ -531,6 +579,19 @@ export const useChatStore = create<ChatState>()(
           isSendingMessage: false,
           currentAbortController: null,
         });
+      },
+      
+      // Sync available models with the latest initialModels (useful when new models are added)
+      syncAvailableModels: () => {
+        const updatedEnabledModels = initialModels.map(m => m.id);
+        
+        set({
+          availableModels: initialModels,
+          enabledModelIds: updatedEnabledModels,
+        });
+        
+        console.log("Available models synced with latest model definitions");
+        toast.success("Model list updated with latest available models");
       },
     }),
     {

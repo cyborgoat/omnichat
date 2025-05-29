@@ -39,6 +39,16 @@ Omnichat is a versatile chat application that allows you to interact with variou
   - Session-specific prompt application
 - **Provider Grouping**: Models organized by provider for easy selection
 
+### 🌐 **Advanced Network & Proxy Support**
+- **Comprehensive Proxy Integration**: Full support for users in restricted regions
+  - SOCKS5, HTTP, and HTTPS proxy protocols with intelligent priority selection
+  - Curl-based implementation for reliable proxy compatibility
+  - Seamless regional access to all supported AI providers
+- **Smart Proxy Management**: Easy configuration through Advanced Settings
+  - Visual proxy status indicators and testing functionality
+  - Automatic fallback and error handling
+  - Support for authenticated and unauthenticated proxies
+
 ### 🌐 **Multi-Provider Support**
 - **OpenAI**: GPT-4, GPT-4 Turbo, GPT-3.5 Turbo
 - **Google Gemini**: Gemini 1.5 Pro, Gemini 1.0 Pro
@@ -132,17 +142,19 @@ npm run tauri:build
 yarn tauri:build
 ```
 
-**Note:** The application features a unified client-side architecture:
-- **Consistent API Handling**: All LLM provider interactions use direct client-side API calls
+**Note:** The application features a unified client-side architecture with hybrid proxy support:
+- **Consistent API Handling**: All LLM provider interactions use direct client-side API calls by default
+- **Intelligent Proxy Routing**: Automatic server-side curl implementation when proxy is enabled for maximum compatibility
 - **Cross-Platform Compatibility**: Same codebase works perfectly in both web and desktop environments
-- **Simplified Deployment**: No server-side dependencies required for any deployment mode
+- **Simplified Deployment**: No server-side dependencies required for standard deployment modes
 - **CORS-Optimized**: Uses provider-specific endpoints that support browser-based requests
 
 This streamlined architecture ensures:
-- ✅ **Web deployments** work as static sites without requiring a server
-- ✅ **Desktop builds** work identically to web builds
+- ✅ **Web deployments** work as static sites without requiring a server (unless proxy is needed)
+- ✅ **Desktop builds** work identically to web builds with full proxy support
+- ✅ **Regional Access**: Reliable proxy support for users in restricted regions
 - ✅ **Simplified maintenance** with unified API handling logic
-- ✅ **Better performance** with direct provider communication
+- ✅ **Better performance** with direct provider communication or optimized proxy routing
 
 ## Project Structure
 

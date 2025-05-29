@@ -72,6 +72,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Static Export Support**: Proper handling of Next.js static exports for Tauri builds
 - **Dual Build Configuration**: Separate build targets for web deployment and desktop applications
 
+## [1.1.2] - 2025-01-29
+
+### Added
+- **Advanced Proxy Support**: Comprehensive proxy integration for users in restricted regions
+  - SOCKS5, HTTP, and HTTPS proxy support with priority-based selection
+  - Curl-based API integration for Anthropic Claude models to bypass Node.js proxy limitations
+  - Proxy settings management in Advanced Settings with save/reset functionality
+- **Enhanced Anthropic Integration**: Server-side curl implementation for reliable proxy support
+  - Message validation to prevent empty content errors
+  - Improved error handling with detailed troubleshooting information
+  - Streamlined request processing with proper content filtering
+
+### Technical Improvements
+- **Hybrid Architecture**: Intelligent routing between client-side (web) and server-side (proxy-enabled) API calls
+- **Curl Integration**: System-level curl execution for reliable proxy compatibility
+- **Message Validation**: Enhanced filtering to ensure all messages meet Anthropic API requirements
+- **Clean Codebase**: Removed redundant debugging code and test endpoints
+
+### Changed
+- Anthropic API integration now uses server-side curl when proxy is enabled
+- Improved proxy settings UI with better error messages and validation
+- Enhanced message filtering to prevent API validation errors
+
+### Removed
+- Redundant proxy test endpoints and debugging utilities
+- Excessive logging and temporary testing code
+
+### Fixed
+- **Critical Proxy Issue**: Resolved Node.js proxy agent compatibility problems with SOCKS5 proxies
+- **Regional Access**: Enabled access to Anthropic API from restricted regions via proxy
+- **Message Validation**: Fixed empty message errors that caused 400 responses from Anthropic API
+- **UI Cleanup**: Removed duplicate buttons and cleaned up settings interface
+
 ## [Unreleased]
 - Additional AI provider integrations
 - Enhanced chat export functionality
