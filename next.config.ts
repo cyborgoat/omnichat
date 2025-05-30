@@ -1,28 +1,13 @@
-import type {NextConfig} from "next";
-
-// Check if we're building for Tauri (static export) or web deployment
-const isTauriBuild = process.env.TAURI_BUILD === 'true';
-
-const nextConfig: NextConfig = {
-  // Only use static export for Tauri builds
-  ...(isTauriBuild && {
-    output: 'export',
-    trailingSlash: true,
-  }),
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'export',
   images: {
-    unoptimized: true
+    unoptimized: true,
   },
-  // Enable experimental features for better performance
-  experimental: {
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
-      },
-    },
-  },
-};
+  // Remove experimental.turbo as it's deprecated
+  // Add proper static export configuration
+  distDir: 'out',
+  trailingSlash: true,
+}
 
-export default nextConfig;
+export default nextConfig

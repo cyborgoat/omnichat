@@ -11,6 +11,7 @@ import {
 import { useChatStore } from "@/app/store/chatStore";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
+import { Brain } from "lucide-react";
 
 interface ModelsSettingsFormProps {
   setIsDirty: (isDirty: boolean) => void;
@@ -113,34 +114,35 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
 
           return (
             <AccordionItem key={provider} value={provider}>
-              <AccordionTrigger className="hover:no-underline">
-                <div className="flex items-center justify-between w-full mr-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`provider-${provider}`}
-                      checked={isProviderFullySelected}
-                      ref={(el) => {
-                        if (el) {
-                          const input = el.querySelector('input');
-                          if (input) input.indeterminate = isProviderPartiallySelected;
-                        }
-                      }}
-                      onCheckedChange={(checked) => handleProviderToggle(provider, checked as boolean)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                    <label 
-                      htmlFor={`provider-${provider}`}
-                      className="text-sm font-medium cursor-pointer"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {provider}
-                    </label>
-                  </div>
+              <div className="flex items-center justify-between py-4 px-1">
+                <div className="flex items-center space-x-2 flex-1">
+                  <Checkbox
+                    id={`provider-${provider}`}
+                    checked={isProviderFullySelected}
+                    ref={(el) => {
+                      if (el) {
+                        const input = el.querySelector('input');
+                        if (input) input.indeterminate = isProviderPartiallySelected;
+                      }
+                    }}
+                    onCheckedChange={(checked) => handleProviderToggle(provider, checked as boolean)}
+                  />
+                  <label 
+                    htmlFor={`provider-${provider}`}
+                    className="text-sm font-medium cursor-pointer"
+                  >
+                    {provider}
+                  </label>
+                </div>
+                <div className="flex items-center space-x-4">
                   <span className="text-xs text-muted-foreground">
                     {selectedProviderModels.length}/{providerModelIds.length}
                   </span>
+                  <AccordionTrigger className="hover:no-underline p-0 h-auto [&[data-state=open]>svg]:rotate-180">
+                    <span className="sr-only">Toggle {provider} models</span>
+                  </AccordionTrigger>
                 </div>
-              </AccordionTrigger>
+              </div>
               
               <AccordionContent>
                 <div className="space-y-2 ml-6">
@@ -155,7 +157,10 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
                         htmlFor={model.id}
                         className="text-xs cursor-pointer flex-1"
                       >
-                        {model.name}
+                        <div className="flex items-center gap-1">
+                          <span>{model.name}</span>
+                          {model.hasReasoning && <Brain size={16} className="text-slate-600 dark:text-slate-400 !size-3.5" />}
+                        </div>
                       </label>
                     </div>
                   ))}

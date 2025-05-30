@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import { create } from "zustand";
 import { createJSONStorage, persist, StateStorage } from "zustand/middleware";
 import { toast } from "sonner";
+import modelsConfig from "@/config/models.json";
 
 // Types
 export interface Model {
@@ -9,6 +10,7 @@ export interface Model {
   name: string;
   provider: string; // e.g., "OpenAI", "Google", "Anthropic", "Deepseek", "Qwen"
   apiKeyRequired: boolean;
+  hasReasoning?: boolean; // Indicates if the model has reasoning/thinking capabilities
   // Potentially add model-specific params like context window size, vision support, etc.
 }
 
@@ -20,6 +22,7 @@ export interface Message {
   timestamp: string;
   thinkingSteps?: string[]; // Contains reasoning content chunks
   isStreaming?: boolean; // Added for stream handling
+  isReasoningStreaming?: boolean; // Tracks if reasoning content is still being generated
   // We can add more fields like 'metadata' for images or files, or error states
 }
 
@@ -119,6 +122,11 @@ export interface ChatState extends PersistedChatState {
     messageId: string,
     isStreaming: boolean
   ) => void;
+  setMessageReasoningStreamingState: (
+    sessionId: string,
+    messageId: string,
+    isReasoningStreaming: boolean
+  ) => void;
   setBotThinking: (isThinking: boolean) => void;
   setSendingMessage: (isSending: boolean) => void;
   addSystemMessageToActiveChat: (systemPrompt: string) => void;
@@ -127,211 +135,7 @@ export interface ChatState extends PersistedChatState {
   syncAvailableModels: () => void;
 }
 
-const initialModels: Model[] = [
-  // OpenAI
-  { id: "o3", name: "o3", provider: "OpenAI", apiKeyRequired: true },
-  {
-    id: "gpt-4.1-preview",
-    name: "GPT-4.1 Preview",
-    provider: "OpenAI",
-    apiKeyRequired: true,
-  },
-  {
-    id: "gpt-4o-mini",
-    name: "GPT-4o Mini",
-    provider: "OpenAI",
-    apiKeyRequired: true,
-  },
-  { id: "gpt-4o", name: "GPT-4o", provider: "OpenAI", apiKeyRequired: true },
-  {
-    id: "gpt-4-turbo",
-    name: "GPT-4 Turbo",
-    provider: "OpenAI",
-    apiKeyRequired: true,
-  },
-  { id: "gpt-4", name: "GPT-4", provider: "OpenAI", apiKeyRequired: true },
-  {
-    id: "gpt-3.5-turbo",
-    name: "GPT-3.5 Turbo",
-    provider: "OpenAI",
-    apiKeyRequired: true,
-  },
-  // Google Gemini
-  {
-    id: "gemini-2.5-pro-preview-05-06",
-    name: "Gemini 2.5 Pro Preview",
-    provider: "Google",
-    apiKeyRequired: true,
-  },
-  {
-    id: "gemini-2.5-flash-preview-05-20",
-    name: "Gemini 2.5 Flash Preview",
-    provider: "Google",
-    apiKeyRequired: true,
-  },
-  {
-    id: "gemini-2.0-flash",
-    name: "Gemini 2.0 Flash",
-    provider: "Google",
-    apiKeyRequired: true,
-  },
-  {
-    id: "gemini-1.5-pro",
-    name: "Gemini 1.5 Pro",
-    provider: "Google",
-    apiKeyRequired: true,
-  },
-  {
-    id: "gemini-1.5-flash",
-    name: "Gemini 1.5 Flash",
-    provider: "Google",
-    apiKeyRequired: true,
-  },
-  {
-    id: "gemini-1.5-flash-8b",
-    name: "Gemini 1.5 Flash-8B",
-    provider: "Google",
-    apiKeyRequired: true,
-  },
-  // Anthropic Claude
-  {
-    id: "claude-opus-4-20250514",
-    name: "Claude Opus 4",
-    provider: "Anthropic",
-    apiKeyRequired: true,
-  },
-  {
-    id: "claude-sonnet-4-20250514", 
-    name: "Claude Sonnet 4",
-    provider: "Anthropic",
-    apiKeyRequired: true,
-  },
-  {
-    id: "claude-3-7-sonnet-20250219",
-    name: "Claude Sonnet 3.7",
-    provider: "Anthropic",
-    apiKeyRequired: true,
-  },
-  {
-    id: "claude-3-5-sonnet-20241022",
-    name: "Claude Sonnet 3.5 v2",
-    provider: "Anthropic",
-    apiKeyRequired: true,
-  },
-  {
-    id: "claude-3-5-sonnet-20240620",
-    name: "Claude Sonnet 3.5",
-    provider: "Anthropic",
-    apiKeyRequired: true,
-  },
-  {
-    id: "claude-3-5-haiku-20241022",
-    name: "Claude Haiku 3.5",
-    provider: "Anthropic",
-    apiKeyRequired: true,
-  },
-  {
-    id: "claude-3-opus-20240229",
-    name: "Claude Opus 3",
-    provider: "Anthropic",
-    apiKeyRequired: true,
-  },
-  {
-    id: "claude-3-sonnet-20240229",
-    name: "Claude Sonnet 3",
-    provider: "Anthropic",
-    apiKeyRequired: true,
-  },
-  {
-    id: "claude-3-haiku-20240307",
-    name: "Claude Haiku 3",
-    provider: "Anthropic",
-    apiKeyRequired: true,
-  },
-  // Deepseek
-  {
-    id: "deepseek-chat",
-    name: "DeepSeek Chat",
-    provider: "Deepseek",
-    apiKeyRequired: true,
-  },
-  {
-    id: "deepseek-coder",
-    name: "DeepSeek Coder",
-    provider: "Deepseek",
-    apiKeyRequired: true,
-  },
-  {
-    id: "deepseek-reasoner",
-    name: "DeepSeek reasoner",
-    provider: "Deepseek",
-    apiKeyRequired: true,
-  },
-  // Qwen (Alibaba DashScope)
-  {
-    id: "qwen-turbo",
-    name: "Qwen Turbo",
-    provider: "Qwen",
-    apiKeyRequired: true,
-  }, // Tongyi Qwen Turbo
-  {
-    id: "qwen-plus",
-    name: "Qwen Plus",
-    provider: "Qwen",
-    apiKeyRequired: true,
-  }, // Tongyi Qwen Plus
-  {
-    id: "qwen-max",
-    name: "Qwen Max",
-    provider: "Qwen",
-    apiKeyRequired: true,
-  }, // Tongyi Qwen Max
-  // Qwen3 Deep Thinking Models
-  {
-    id: "qwen-plus-latest",
-    name: "Qwen3 Plus (Latest)",
-    provider: "Qwen",
-    apiKeyRequired: true,
-  }, // Qwen3 with thinking
-  {
-    id: "qwen-plus-2025-04-28",
-    name: "Qwen3 Plus (0428)",
-    provider: "Qwen",
-    apiKeyRequired: true,
-  }, // Qwen3 snapshot
-  {
-    id: "qwen-turbo-latest",
-    name: "Qwen3 Turbo (Latest)",
-    provider: "Qwen",
-    apiKeyRequired: true,
-  }, // Qwen3 Turbo with thinking
-  // QwQ Deep Thinking Models
-  {
-    id: "qwq-plus",
-    name: "QwQ Plus (Deep Thinking)",
-    provider: "Qwen",
-    apiKeyRequired: true,
-  }, // QwQ reasoning model
-  {
-    id: "qwq-32b-preview",
-    name: "QwQ 32B Preview",
-    provider: "Qwen",
-    apiKeyRequired: true,
-  }, // QwQ 32B model
-  // Volces (Volcengine)
-  {
-    id: "deepseek-r1-250120",
-    name: "DeepSeek-R1",
-    provider: "Volces",
-    apiKeyRequired: true,
-  },
-  {
-    id: "deepseek-v3-250324", // Commented out until correct ID is known
-    name: "DeepSeek-V3",
-    provider: "Volces",
-    apiKeyRequired: true,
-  },
-];
+const initialModels: Model[] = modelsConfig.models;
 
 export const useChatStore = create<ChatState>()(
   persist(
@@ -563,6 +367,23 @@ export const useChatStore = create<ChatState>()(
         }));
       },
 
+      setMessageReasoningStreamingState: (sessionId, messageId, isReasoningStreaming) => {
+        set((state) => ({
+          chatSessions: state.chatSessions.map((s) =>
+            s.id === sessionId
+              ? {
+                  ...s,
+                  messages: s.messages.map((item) =>
+                    item.id === messageId && item.type === "message"
+                      ? { ...item, isReasoningStreaming }
+                      : item
+                  ),
+                }
+              : s
+          ),
+        }));
+      },
+
       setBotThinking: (isThinking) => set({ isBotThinking: isThinking }),
       setSendingMessage: (isSending) => set({ isSendingMessage: isSending }),
 
@@ -601,7 +422,7 @@ export const useChatStore = create<ChatState>()(
         });
       },
       
-      // Sync available models with the latest initialModels (useful when new models are added)
+      // Sync available models with the latest models from config/models.json
       syncAvailableModels: () => {
         const updatedEnabledModels = initialModels.map(m => m.id);
         
@@ -610,7 +431,7 @@ export const useChatStore = create<ChatState>()(
           enabledModelIds: updatedEnabledModels,
         });
         
-        console.log("Available models synced with latest model definitions");
+        console.log("Available models synced with latest configuration from models.json");
         toast.success("Model list updated with latest available models");
       },
     }),
@@ -654,7 +475,28 @@ if (typeof window !== "undefined") {
       currentState.createNewChatSession(); // This action calls set internally
     }
 
-    // 2. Normalize modelSettings to ensure all fields are present and valid
+    // 2. Migrate models to include missing properties like hasReasoning
+    const currentModels = currentState.availableModels;
+    const needsMigration = currentModels.some(model => {
+      const latestModel = initialModels.find(m => m.id === model.id);
+      return latestModel && latestModel.hasReasoning && !model.hasReasoning;
+    });
+
+    if (needsMigration) {
+      console.log("Migrating models to include hasReasoning properties...");
+      const migratedModels = currentModels.map(model => {
+        const latestModel = initialModels.find(m => m.id === model.id);
+        if (latestModel) {
+          return { ...model, ...latestModel }; // Merge to include new properties
+        }
+        return model;
+      });
+      
+      useChatStore.setState({ availableModels: migratedModels });
+      console.log("Models migrated with hasReasoning properties");
+    }
+
+    // 3. Normalize modelSettings to ensure all fields are present and valid
     const currentModelSettings = currentState.modelSettings;
     
     const normalizedModelSettings: ModelSettings = {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Check,
@@ -17,6 +17,7 @@ import {
     ZapOff,
     Thermometer,
     ListChecks,
+    Brain,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { Model, useChatStore, useEnabledModels } from "@/app/store/chatStore";
@@ -153,9 +154,10 @@ export function AppSidebar() {
         toast.success("Global system prompt applied to current chat!");
     };
 
-    const handleToggleTheme = () => {
-        setTheme(theme === "dark" ? "light" : "dark");
-    };
+    const handleToggleTheme = useCallback(() => {
+        const newTheme = theme === "dark" ? "light" : "dark";
+        setTheme(newTheme);
+    }, [theme, setTheme]);
 
     return (
         <>
@@ -193,7 +195,7 @@ export function AppSidebar() {
                     {/* This div is always on the right. When collapsed, menu toggle is pushed by invisible theme toggle space or centered by itself. */}
                     <div className={`flex items-center ml-auto}`}>
                         <AnimatePresence>
-                            {!isMenuCollapsed && mounted && (
+                            {!isMenuCollapsed && (
                                 <motion.div
                                     key="theme-toggle-expanded-header" // Unique key
                                     variants={itemFadeSlideVariants}
@@ -208,7 +210,7 @@ export function AppSidebar() {
                                         className="hover:bg-sidebar-accent text-sidebar-foreground/80 hover:text-sidebar-foreground mr-1 h-9 w-9"
                                         aria-label="Toggle theme"
                                     >
-                                        {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+                                        {mounted && theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
                                     </Button>
                                 </motion.div>
                             )}
@@ -301,7 +303,14 @@ export function AppSidebar() {
                                                     : (Object.entries(groupedModels).map(([providerName, modelsInGroup]) => (
                                                         <SelectGroup key={providerName}>
                                                             <SelectLabel className="text-sidebar-foreground/70 text-xs font-semibold">{providerName}</SelectLabel>
-                                                            {modelsInGroup.map((model) => (<SelectItem key={model.id} value={model.id} className="hover:bg-sidebar-accent focus:bg-sidebar-accent data-[highlighted]:bg-sidebar-accent data-[state=checked]:bg-sidebar-accent/80 text-xs">{model.name}</SelectItem>))}
+                                                            {modelsInGroup.map((model) => (
+                                                                <SelectItem key={model.id} value={model.id} className="hover:bg-sidebar-accent focus:bg-sidebar-accent data-[highlighted]:bg-sidebar-accent data-[state=checked]:bg-sidebar-accent/80 text-xs">
+                                                                    <div className="flex items-center gap-1">
+                                                                        <span>{model.name}</span>
+                                                                        {model.hasReasoning && <Brain size={16} className="text-slate-600 dark:text-slate-400 !size-3" />}
+                                                                    </div>
+                                                                </SelectItem>
+                                                            ))}
                                                         </SelectGroup>
                                                     )))}
                                             </SelectContent>
@@ -388,7 +397,7 @@ export function AppSidebar() {
 
                 {/* Collapsed State Action Icons - Positioned at the bottom */}
                 <AnimatePresence>
-                    {isMenuCollapsed && mounted && (
+                    {isMenuCollapsed && (
                         <motion.div
                             key="collapsed-actions"
                             initial={{ opacity: 0 }}
@@ -400,7 +409,7 @@ export function AppSidebar() {
                                 <PlusCircle size={20} />
                             </Button>
                             <Button variant="ghost" size="icon" onClick={handleToggleTheme} className="hover:bg-sidebar-accent text-sidebar-foreground/80 hover:text-sidebar-foreground h-9 w-9" aria-label="Toggle theme">
-                                {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+                                {mounted && theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
                             </Button>
                             <SettingsDialog isMenuCollapsed={isMenuCollapsed} />
                         </motion.div>

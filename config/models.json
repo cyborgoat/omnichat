@@ -1,0 +1,133 @@
+{
+  "models": [
+    {
+      "id": "o3",
+      "name": "o3",
+      "provider": "OpenAI",
+      "apiKeyRequired": true,
+      "hasReasoning": true
+    },
+    {
+      "id": "gpt-4.1-preview",
+      "name": "GPT-4.1 Preview",
+      "provider": "OpenAI",
+      "apiKeyRequired": true
+    },
+    {
+      "id": "gpt-4o-mini",
+      "name": "GPT-4o Mini",
+      "provider": "OpenAI",
+      "apiKeyRequired": true
+    },
+    {
+      "id": "gpt-4o",
+      "name": "GPT-4o",
+      "provider": "OpenAI",
+      "apiKeyRequired": true
+    },
+    {
+      "id": "gpt-4",
+      "name": "GPT-4",
+      "provider": "OpenAI",
+      "apiKeyRequired": true
+    },
+    {
+      "id": "gemini-2.5-pro-preview-05-06",
+      "name": "Gemini 2.5 Pro Preview",
+      "provider": "Google",
+      "apiKeyRequired": true
+    },
+    {
+      "id": "gemini-2.5-flash-preview-05-20",
+      "name": "Gemini 2.5 Flash Preview",
+      "provider": "Google",
+      "apiKeyRequired": true
+    },
+    {
+      "id": "gemini-2.0-flash",
+      "name": "Gemini 2.0 Flash",
+      "provider": "Google",
+      "apiKeyRequired": true
+    },
+    {
+      "id": "gemini-1.5-flash",
+      "name": "Gemini 1.5 Flash",
+      "provider": "Google",
+      "apiKeyRequired": true
+    },
+    {
+      "id": "claude-opus-4-20250514",
+      "name": "Claude Opus 4",
+      "provider": "Anthropic",
+      "apiKeyRequired": true,
+      "hasReasoning": true
+    },
+    {
+      "id": "claude-sonnet-4-20250514",
+      "name": "Claude Sonnet 4",
+      "provider": "Anthropic",
+      "apiKeyRequired": true,
+      "hasReasoning": true
+    },
+    {
+      "id": "claude-3-7-sonnet-20250219",
+      "name": "Claude Sonnet 3.7",
+      "provider": "Anthropic",
+      "apiKeyRequired": true,
+      "hasReasoning": true
+    },
+    {
+      "id": "deepseek-chat",
+      "name": "DeepSeek Chat",
+      "provider": "Deepseek",
+      "apiKeyRequired": true
+    },
+    {
+      "id": "deepseek-coder",
+      "name": "DeepSeek Coder",
+      "provider": "Deepseek",
+      "apiKeyRequired": true
+    },
+    {
+      "id": "deepseek-reasoner",
+      "name": "DeepSeek reasoner",
+      "provider": "Deepseek",
+      "apiKeyRequired": true,
+      "hasReasoning": true
+    },
+    {
+      "id": "qwen-plus-latest",
+      "name": "Qwen3 Plus (Latest)",
+      "provider": "Qwen",
+      "apiKeyRequired": true,
+      "hasReasoning": true
+    },
+    {
+      "id": "qwen-turbo-latest",
+      "name": "Qwen3 Turbo (Latest)",
+      "provider": "Qwen",
+      "apiKeyRequired": true,
+      "hasReasoning": true
+    },
+    {
+      "id": "qwq-plus",
+      "name": "QwQ Plus (Deep Thinking)",
+      "provider": "Qwen",
+      "apiKeyRequired": true,
+      "hasReasoning": true
+    },
+    {
+      "id": "deepseek-r1-250120",
+      "name": "DeepSeek-R1",
+      "provider": "Volces",
+      "apiKeyRequired": true,
+      "hasReasoning": true
+    },
+    {
+      "id": "deepseek-v3-250324",
+      "name": "DeepSeek-V3",
+      "provider": "Volces",
+      "apiKeyRequired": true
+    }
+  ]
+}

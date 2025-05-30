@@ -2,7 +2,7 @@
 
 Omnichat is a versatile chat application that allows you to interact with various Large Language Models (LLMs) from different providers, all within a single, intuitive interface. Available as both a web application and a native desktop app, it's built with Next.js, Tailwind CSS, Shadcn UI, and Tauri for a modern, responsive, and cross-platform experience.
 
-> **Latest Update (v1.1.3)**: Critical stability improvements including fixed TypeScript compilation errors, resolved layout collapse issues, and enhanced accessibility compliance for a more robust user experience.
+> **Latest Update (v1.1.4)**: Enhanced reasoning model support with brain icons, improved shimmer effects for LLM activity states, comfortable dark theme refinements, and streamlined model configuration management for a more intuitive user experience.
 
 ## Features
 
@@ -21,25 +21,36 @@ Omnichat is a versatile chat application that allows you to interact with variou
   - Copy-to-clipboard functionality for code blocks
   - Theme-aware styling for optimal visibility in light and dark modes
 - **Real-time Streaming**: Live message streaming from LLM providers
-- **Animated Indicators**: Visual feedback for message sending and bot thinking states
+- **Animated Indicators**: Visual feedback for message sending and bot thinking states with dynamic shimmer effects
+- **Reasoning Process Visualization**: Expandable thinking process display for reasoning-capable models
 - **File Upload Support**: Attach text and image files with previews and validation
+
+### 🧠 **Intelligent Model Management**
+- **Reasoning Model Recognition**: Automatic identification and visual distinction of reasoning-capable models
+  - Brain icons (`🧠`) for models with advanced reasoning capabilities
+  - Smart detection of OpenAI o3, DeepSeek R1, Qwen reasoning models, and Claude advanced models
+  - Enhanced UI feedback for reasoning process states
+- **Dynamic Model Selection**: Switch LLM models per session on the fly
+- **Provider Grouping**: Models organized by provider for easy selection
+- **Centralized Configuration**: JSON-based model definitions for easier maintenance
 
 ### 🎛️ **Comprehensive Settings Management**
 - **Settings Dialog**: Centralized settings management with tabbed interface
   - **Profile Settings**: Configure username and avatar URL with localStorage persistence
   - **API Key Management**: Secure management of all provider API keys with show/hide functionality
+  - **Models Configuration**: Visual model selection with reasoning capability indicators
 - **Form Validation**: Built with react-hook-form and Zod for robust input validation
 - **Toast Notifications**: User-friendly feedback using Sonner for all actions
 
 ### 🔧 **Smart Side Menu**
 - **Collapsible Design**: Space-efficient interface with smooth animations
 - **Chat Session Management**: Create, rename, delete, and organize chat sessions
-- **Dynamic Model Selection**: Switch LLM models per session on the fly
+- **Model Selection with Visual Cues**: Brain icons distinguish reasoning models in sidebar
 - **Global System Prompt**: 
   - Advanced prompt management with apply/undo functionality
   - Visual indicators for unsaved changes
   - Session-specific prompt application
-- **Provider Grouping**: Models organized by provider for easy selection
+- **Enhanced Theme Toggle**: Improved responsiveness and comfortable dark theme colors
 
 ### 🌐 **Advanced Network & Proxy Support**
 - **Comprehensive Proxy Integration**: Full support for users in restricted regions

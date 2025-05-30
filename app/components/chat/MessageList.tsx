@@ -22,6 +22,7 @@ import {
 import { useTheme } from "next-themes";
 import React, { useEffect, useState } from "react";
 import { FilePreview } from "../ui/file-preview";
+import { TextShimmer } from "@/components/motion-primitives/text-shimmer";
 
 interface MessageListProps {
   messages: ChatItem[];
@@ -179,7 +180,9 @@ export default function MessageList({ messages }: MessageListProps) {
                       <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-75"></div>
                       <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-150"></div>
                       <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-300"></div>
-                      <span className="text-xs">Working on it...</span>
+                      <TextShimmer className="text-xs" duration={0.5}>
+                        Working on it...
+                      </TextShimmer>
                     </div>
                   )}
                   {msg.sender === "bot" ? (
@@ -206,7 +209,14 @@ export default function MessageList({ messages }: MessageListProps) {
                           className="border-t border-border pt-1.5"
                         >
                           <AccordionTrigger className="text-muted-foreground hover:no-underline py-1.5 px-0 text-left">
-                            Show Reasoning Process
+                            {/* Show shimmer only when streaming AND no response content yet (reasoning still in progress) */}
+                            {msg.isStreaming && msg.thinkingSteps && msg.thinkingSteps.length > 0 && !msg.text.trim() ? (
+                              <TextShimmer className="text-sm" duration={0.5}>
+                                Show Reasoning Process
+                              </TextShimmer>
+                            ) : (
+                              "Show Reasoning Process"
+                            )}
                           </AccordionTrigger>
                           <AccordionContent className="bg-muted p-2.5 rounded-md mt-1.5">
                             <div className="text-muted-foreground whitespace-pre-wrap text-xs leading-relaxed">

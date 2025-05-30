@@ -98,55 +98,55 @@
 }
 
 .dark {
-  /* Black & White Dark Theme */
-  --background: oklch(0.17 0.01 260);       /* Neutral-900 equivalent */
-  --foreground: oklch(1 0 0);               /* White */
+  /* Mild Slate/Stone Dark Theme - Comfortable for Eyes */
+  --background: oklch(0.25 0.005 260);      /* Dark slate background */
+  --foreground: oklch(0.9 0.005 260);       /* Soft light text */
 
-  --card: oklch(0.17 0.01 260);             /* Neutral-900 equivalent */
-  --card-foreground: oklch(1 0 0);          /* White */
+  --card: oklch(0.28 0.005 260);            /* Slightly lighter slate for cards */
+  --card-foreground: oklch(0.88 0.005 260); /* Soft light text */
 
-  --popover: oklch(0.17 0.01 260);          /* Neutral-900 equivalent */
-  --popover-foreground: oklch(1 0 0);       /* White */
+  --popover: oklch(0.26 0.005 260);         /* Slate popover background */
+  --popover-foreground: oklch(0.9 0.005 260); /* Soft light text */
 
-  --primary: oklch(1 0 0);                  /* White */
-  --primary-foreground: oklch(0 0 0);       /* Black */
+  --primary: oklch(0.85 0.01 260);          /* Soft light primary */
+  --primary-foreground: oklch(0.2 0.005 260); /* Dark text on light */
 
-  --secondary: oklch(0.15 0 0);             /* Dark Gray */
-  --secondary-foreground: oklch(1 0 0);     /* White */
+  --secondary: oklch(0.35 0.008 260);       /* Medium slate */
+  --secondary-foreground: oklch(0.85 0.005 260); /* Soft light text */
 
-  --muted: oklch(0.1 0 0);                  /* Very Dark Gray */
-  --muted-foreground: oklch(0.75 0 0);      /* Light Gray */
+  --muted: oklch(0.32 0.008 260);           /* Muted slate */
+  --muted-foreground: oklch(0.65 0.01 260); /* Medium light gray */
 
-  --accent: oklch(0.85 0 0);                /* Light Gray (for subtle accents) */
-  --accent-foreground: oklch(0 0 0);        /* Black */
+  --accent: oklch(0.75 0.012 260);          /* Lighter accent */
+  --accent-foreground: oklch(0.25 0.005 260); /* Dark text */
 
-  --destructive: oklch(1 0 0);              /* White (or a light gray for critical alerts) */
-  --destructive-foreground: oklch(0 0 0);   /* Black */
+  --destructive: oklch(0.85 0.015 20);      /* Soft red for destructive */
+  --destructive-foreground: oklch(0.2 0.005 260); /* Dark text */
 
-  --border: oklch(0.2 0 0);                 /* Dark Gray */
-  --input: oklch(0.2 0 0);                  /* Dark Gray (input borders) */
-  --ring: oklch(0.8 0 0);                   /* Light Gray (focus rings) */
+  --border: oklch(0.4 0.008 260);           /* Medium slate borders */
+  --input: oklch(0.35 0.008 260);           /* Input backgrounds */
+  --ring: oklch(0.7 0.012 260);             /* Soft focus rings */
 
   /* Sidebar Specific - Dark Theme */
-  --sidebar: oklch(0.12 0.01 260);          /* Darker Neutral for Sidebar */
-  --sidebar-foreground: oklch(1 0 0);          /* White */
-  --sidebar-primary: oklch(1 0 0);             /* White */
-  --sidebar-primary-foreground: oklch(0 0 0);  /* Black */
-  --sidebar-accent: oklch(0.2 0 0);            /* Dark Gray */
-  --sidebar-accent-foreground: oklch(1 0 0);   /* White */
-  --sidebar-border: oklch(0.15 0 0);           /* Dark Gray */
-  --sidebar-ring: oklch(0.8 0 0);              /* Light Gray */
+  --sidebar: oklch(0.22 0.005 260);         /* Darker slate sidebar */
+  --sidebar-foreground: oklch(0.88 0.005 260); /* Soft light text */
+  --sidebar-primary: oklch(0.82 0.01 260);     /* Soft light primary */
+  --sidebar-primary-foreground: oklch(0.22 0.005 260); /* Dark text */
+  --sidebar-accent: oklch(0.38 0.008 260);     /* Medium slate accent */
+  --sidebar-accent-foreground: oklch(0.85 0.005 260); /* Soft light text */
+  --sidebar-border: oklch(0.35 0.008 260);     /* Slate borders */
+  --sidebar-ring: oklch(0.7 0.012 260);        /* Soft rings */
 
-  /* Charts (Grayscale) */
-  --chart-1: oklch(0.9 0 0);
-  --chart-2: oklch(0.75 0 0);
-  --chart-3: oklch(0.6 0 0);
-  --chart-4: oklch(0.4 0 0);
-  --chart-5: oklch(0.2 0 0);
+  /* Charts (Grayscale with mild tones) */
+  --chart-1: oklch(0.8 0.01 260);
+  --chart-2: oklch(0.65 0.01 260);
+  --chart-3: oklch(0.5 0.01 260);
+  --chart-4: oklch(0.4 0.008 260);
+  --chart-5: oklch(0.3 0.008 260);
 
   /* Logo Colors - Dark Theme */
-  --logo-fill-color: oklch(1 0 0); /* White fill */
-  --logo-stroke-color: oklch(0 0 0); /* Black stroke */
+  --logo-fill-color: oklch(0.85 0.01 260); /* Soft light fill */
+  --logo-stroke-color: oklch(0.25 0.005 260); /* Dark stroke */
 }
 
 @layer base {

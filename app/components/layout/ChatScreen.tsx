@@ -474,6 +474,7 @@ export default function ChatScreen() {
         onScroll={handleScroll}
       >
         <MessageList messages={activeSession.messages} />
+        
         {/* Scroll anchor for smooth bottom positioning */}
         <div ref={messagesEndRef} className="h-4" aria-hidden="true" />
       </div>

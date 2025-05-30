@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "omnichat",
-  "version": "1.1.2",
+  "version": "1.1.4",
   "identifier": "com.omnichat.app",
   "build": {
     "frontendDist": "../out",
@@ -34,13 +34,6 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ],
-    "ios": {
-      "developmentTeam": "YOUR_TEAM_ID_HERE",
-      "xcodeBuildArgs": [
-        "-derivedDataPath",
-        "gen/apple/derived_data"
-      ]
-    }
+    ]
   }
 }

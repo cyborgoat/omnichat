@@ -49,20 +49,22 @@ interface AdvancedSettingsFormProps {
   setIsDirty: (isDirty: boolean) => void;
 }
 
-export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) {
+export function AdvancedSettingsForm({
+  setIsDirty,
+}: AdvancedSettingsFormProps) {
   const [isSavingProxy, setIsSavingProxy] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
-  
-  const { 
-    apiKeys, 
-    enabledModelIds, 
-    chatSessions, 
+
+  const {
+    apiKeys,
+    enabledModelIds,
+    chatSessions,
     globalSystemPrompt,
     proxySettings,
     setApiKey,
     setGlobalSystemPrompt,
     setProxySettings,
-    syncAvailableModels
+    syncAvailableModels,
   } = useChatStore();
 
   // Proxy settings form
@@ -70,9 +72,9 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
     resolver: zodResolver(proxySchema),
     defaultValues: {
       proxyEnabled: proxySettings.enabled,
-      httpProxy: proxySettings.http || '',
-      httpsProxy: proxySettings.https || '',
-      socks5Proxy: proxySettings.socks5 || '',
+      httpProxy: proxySettings.http || "",
+      httpsProxy: proxySettings.https || "",
+      socks5Proxy: proxySettings.socks5 || "",
     },
     mode: "onChange",
   });
@@ -101,7 +103,7 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
   // Handle proxy settings save
   const onSaveProxy = async (data: ProxyFormValues) => {
     setIsSavingProxy(true);
-    
+
     try {
       const newProxySettings: ProxySettings = {
         enabled: data.proxyEnabled,
@@ -109,7 +111,7 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
         https: data.httpsProxy?.trim() || undefined,
         socks5: data.socks5Proxy?.trim() || undefined,
       };
-      
+
       setProxySettings(newProxySettings);
       proxyForm.reset(data);
       setIsDirty(false);
@@ -125,12 +127,12 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
   // Handle data clearing operations
   const onClearData = async (data: DataManagementFormValues) => {
     setIsClearing(true);
-    
+
     try {
       const clearedSections: string[] = [];
 
       if (data.clearAll) {
-        localStorage.removeItem('omnichat-storage');
+        localStorage.removeItem("omnichat-storage");
         toast.success("All data cleared! Reloading application...");
         setTimeout(() => {
           window.location.reload();
@@ -139,8 +141,8 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
       }
 
       if (data.clearApiKeys) {
-        Object.keys(apiKeys).forEach(provider => {
-          setApiKey(provider, '');
+        Object.keys(apiKeys).forEach((provider) => {
+          setApiKey(provider, "");
         });
         clearedSections.push("API Keys");
       }
@@ -159,7 +161,9 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
       }
 
       if (data.clearGlobalSystemPrompt) {
-        setGlobalSystemPrompt("You are a helpful AI assistant. Respond in Markdown format.");
+        setGlobalSystemPrompt(
+          "You are a helpful AI assistant. Respond in Markdown format."
+        );
         clearedSections.push("Global System Prompt");
       }
 
@@ -169,7 +173,6 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
       } else {
         toast.info("No sections selected for clearing");
       }
-
     } catch (error) {
       console.error("Error clearing data:", error);
       toast.error("Failed to clear data. Please try again.");
@@ -187,10 +190,14 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
   };
 
   const getDataSummary = () => {
-    const apiKeyCount = Object.keys(apiKeys).filter(key => apiKeys[key]).length;
+    const apiKeyCount = Object.keys(apiKeys).filter(
+      (key) => apiKeys[key]
+    ).length;
     const enabledModelCount = enabledModelIds.length;
     const chatSessionCount = chatSessions.length;
-    const hasCustomPrompt = globalSystemPrompt !== "You are a helpful AI assistant. Respond in Markdown format.";
+    const hasCustomPrompt =
+      globalSystemPrompt !==
+      "You are a helpful AI assistant. Respond in Markdown format.";
 
     return {
       apiKeyCount,
@@ -203,32 +210,37 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
   const summary = getDataSummary();
 
   // Check if proxy settings have changed
-  const proxySettingsChanged = 
+  const proxySettingsChanged =
     proxyForm.getValues("proxyEnabled") !== proxySettings.enabled ||
-    (proxyForm.getValues("httpProxy") || '') !== (proxySettings.http || '') ||
-    (proxyForm.getValues("httpsProxy") || '') !== (proxySettings.https || '') ||
-    (proxyForm.getValues("socks5Proxy") || '') !== (proxySettings.socks5 || '');
+    (proxyForm.getValues("httpProxy") || "") !== (proxySettings.http || "") ||
+    (proxyForm.getValues("httpsProxy") || "") !== (proxySettings.https || "") ||
+    (proxyForm.getValues("socks5Proxy") || "") !== (proxySettings.socks5 || "");
 
   // Determine if any clear action is selected
-  const anyClearActionSelected = dataForm.watch("clearAll") || 
-                                 dataForm.watch("clearApiKeys") || 
-                                 dataForm.watch("clearEnabledModels") || 
-                                 dataForm.watch("clearChatSessions") || 
-                                 dataForm.watch("clearGlobalSystemPrompt");
+  const anyClearActionSelected =
+    dataForm.watch("clearAll") ||
+    dataForm.watch("clearApiKeys") ||
+    dataForm.watch("clearEnabledModels") ||
+    dataForm.watch("clearChatSessions") ||
+    dataForm.watch("clearGlobalSystemPrompt");
 
   return (
     <div className="space-y-4 py-4">
       <h3 className="text-md font-medium">Advanced Settings</h3>
-      
-      <Accordion type="multiple" defaultValue={["proxy", "data"]} className="w-full">
+
+      <Accordion
+        type="multiple"
+        defaultValue={["proxy", "data"]}
+        className="w-full"
+      >
         {/* Network & Proxy Settings */}
         <AccordionItem value="proxy">
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center gap-2">
-              <Globe className="h-4 w-4 text-blue-500" />
+              <Globe className="h-4 w-4 text-slate-800 dark:text-slate-200" />
               <span>Network & Proxy Settings</span>
               {proxySettings.enabled && (
-                <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                <span className="text-xs bg-blue-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-2 py-0.5 rounded-full">
                   Active
                 </span>
               )}
@@ -236,7 +248,10 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
           </AccordionTrigger>
           <AccordionContent>
             <Form {...proxyForm}>
-              <form onSubmit={proxyForm.handleSubmit(onSaveProxy)} className="space-y-4">
+              <form
+                onSubmit={proxyForm.handleSubmit(onSaveProxy)}
+                className="space-y-4"
+              >
                 <FormField
                   control={proxyForm.control}
                   name="proxyEnabled"
@@ -249,7 +264,9 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                         />
                       </FormControl>
                       <div className="space-y-1 leading-none">
-                        <FormLabel className="text-sm font-medium">Enable Proxy</FormLabel>
+                        <FormLabel className="text-sm font-medium">
+                          Enable Proxy
+                        </FormLabel>
                         <FormDescription className="text-xs text-muted-foreground">
                           Route server-side API requests through a proxy server
                         </FormDescription>
@@ -305,7 +322,9 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                       name="socks5Proxy"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm">SOCKS5 Proxy</FormLabel>
+                          <FormLabel className="text-sm">
+                            SOCKS5 Proxy
+                          </FormLabel>
                           <FormControl>
                             <Input
                               placeholder="socks5://proxy.example.com:1080"
@@ -314,7 +333,8 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                             />
                           </FormControl>
                           <FormDescription className="text-xs">
-                            SOCKS5 proxy URL (recommended for better compatibility)
+                            SOCKS5 proxy URL (recommended for better
+                            compatibility)
                           </FormDescription>
                         </FormItem>
                       )}
@@ -328,8 +348,8 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                 )}
 
                 <div className="flex gap-2 pt-2">
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={isSavingProxy || !proxySettingsChanged}
                     className="flex items-center gap-2"
                     size="sm"
@@ -341,10 +361,10 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                     )}
                     {isSavingProxy ? "Saving..." : "Save"}
                   </Button>
-                  
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+
+                  <Button
+                    type="button"
+                    variant="outline"
                     size="sm"
                     onClick={() => proxyForm.reset()}
                     disabled={isSavingProxy}
@@ -361,18 +381,22 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
         <AccordionItem value="data">
           <AccordionTrigger className="hover:no-underline">
             <div className="flex items-center gap-2">
-              <Database className="h-4 w-4 text-red-500" />
+              <Database className="h-4 w-4 text-slate-800 dark:text-slate-200" />
               <div className="text-left">
                 <div>Data Management</div>
                 <div className="text-xs text-muted-foreground font-normal">
-                  {summary.apiKeyCount} API keys • {summary.chatSessionCount} sessions • {summary.enabledModelCount} models
+                  {summary.apiKeyCount} API keys • {summary.chatSessionCount}{" "}
+                  sessions • {summary.enabledModelCount} models
                 </div>
               </div>
             </div>
           </AccordionTrigger>
           <AccordionContent>
             <Form {...dataForm}>
-              <form onSubmit={dataForm.handleSubmit(onClearData)} className="space-y-4">
+              <form
+                onSubmit={dataForm.handleSubmit(onClearData)}
+                className="space-y-4"
+              >
                 <FormField
                   control={dataForm.control}
                   name="clearAll"
@@ -389,7 +413,8 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                           Clear All Data & Reload App
                         </FormLabel>
                         <FormDescription className="text-xs">
-                          This will completely reset the application to its initial state and reload the page.
+                          This will completely reset the application to its
+                          initial state and reload the page.
                         </FormDescription>
                       </div>
                     </FormItem>
@@ -399,8 +424,10 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                 <Separator />
 
                 <div className="space-y-3">
-                  <p className="text-sm font-medium">Or select specific sections to clear:</p>
-                  
+                  <p className="text-sm font-medium">
+                    Or select specific sections to clear:
+                  </p>
+
                   <FormField
                     control={dataForm.control}
                     name="clearApiKeys"
@@ -414,7 +441,9 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel className="text-sm">API Keys ({summary.apiKeyCount} configured)</FormLabel>
+                          <FormLabel className="text-sm">
+                            API Keys ({summary.apiKeyCount} configured)
+                          </FormLabel>
                           <FormDescription className="text-xs">
                             Clear all saved API keys for all providers
                           </FormDescription>
@@ -436,9 +465,13 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel className="text-sm">Model Selection ({summary.enabledModelCount} enabled)</FormLabel>
+                          <FormLabel className="text-sm">
+                            Model Selection ({summary.enabledModelCount}{" "}
+                            enabled)
+                          </FormLabel>
                           <FormDescription className="text-xs">
-                            Reset to all models enabled and sync with latest available models
+                            Reset to all models enabled and sync with latest
+                            available models
                           </FormDescription>
                         </div>
                       </FormItem>
@@ -458,9 +491,12 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel className="text-sm text-destructive">Chat Sessions ({summary.chatSessionCount} sessions)</FormLabel>
+                          <FormLabel className="text-sm text-destructive">
+                            Chat Sessions ({summary.chatSessionCount} sessions)
+                          </FormLabel>
                           <FormDescription className="text-xs">
-                            ⚠️ This will permanently delete all your chat history
+                            ⚠️ This will permanently delete all your chat
+                            history
                           </FormDescription>
                         </div>
                       </FormItem>
@@ -480,7 +516,9 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel className="text-sm">Global System Prompt</FormLabel>
+                          <FormLabel className="text-sm">
+                            Global System Prompt
+                          </FormLabel>
                           <FormDescription className="text-xs">
                             Reset to default system prompt
                           </FormDescription>
@@ -491,9 +529,9 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                 </div>
 
                 <div className="pt-4 flex gap-2">
-                  <Button 
-                    type="submit" 
-                    variant="destructive" 
+                  <Button
+                    type="submit"
+                    variant="destructive"
                     size="sm"
                     disabled={isClearing || !anyClearActionSelected}
                     className="flex items-center gap-2"
@@ -505,10 +543,10 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                     )}
                     {isClearing ? "Clearing..." : "Clear Selected Data"}
                   </Button>
-                  
-                  <Button 
-                    type="button" 
-                    variant="outline" 
+
+                  <Button
+                    type="button"
+                    variant="outline"
                     size="sm"
                     onClick={() => dataForm.reset()}
                     disabled={isClearing}
@@ -518,9 +556,12 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
                 </div>
 
                 <div className="text-xs text-muted-foreground bg-yellow-50 dark:bg-yellow-950/20 p-3 rounded-md border border-yellow-200 dark:border-yellow-800">
-                  <p className="font-medium mb-1 text-yellow-800 dark:text-yellow-200">⚠️ Warning:</p>
+                  <p className="font-medium mb-1 text-yellow-800 dark:text-yellow-200">
+                    ⚠️ Warning:
+                  </p>
                   <p className="text-yellow-700 dark:text-yellow-300">
-                    Data clearing actions cannot be undone. Make sure you have backed up any important data before proceeding.
+                    Data clearing actions cannot be undone. Make sure you have
+                    backed up any important data before proceeding.
                   </p>
                 </div>
               </form>
@@ -532,4 +573,4 @@ export function AdvancedSettingsForm({ setIsDirty }: AdvancedSettingsFormProps) 
   );
 }
 
-export default AdvancedSettingsForm; 
+export default AdvancedSettingsForm;
