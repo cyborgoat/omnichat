@@ -13,6 +13,6 @@ export interface ChatRequest {
     enabled?: boolean;
     http?: string;
     https?: string;
-    socks?: string;
+    socks5?: string;
   };
 } 

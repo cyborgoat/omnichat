@@ -92,9 +92,6 @@ export async function POST(request: NextRequest) {
         topK: 40,
         topP: 0.95,
         maxOutputTokens: maxTokens,
-        thinkingConfig: {
-          includeThoughts: true,
-        },
       },
       ...(systemPrompt && {
         systemInstruction: {

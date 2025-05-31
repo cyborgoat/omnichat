@@ -76,14 +76,6 @@ export async function POST(request: NextRequest) {
         qwenMessages.unshift({ role: "system", content: systemPrompt });
       }
     }
-    
-    // Add a prompt to encourage thinking if it's a Qwen3 model and streaming is on
-    if (isQwen3ThinkingModel && streamEnabled && !qwenMessages.find(m => m.role === "system" && m.content.includes("Please show your thinking process step by step before the final answer."))) {
-        qwenMessages.unshift({
-            role: "system",
-            content: "Please show your thinking process step by step before the final answer. Format the thinking process within <think>...</think> blocks."
-        });
-    }
 
     // Validate messages
     if (qwenMessages.length === 0) {
@@ -93,13 +85,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare the request body
+    // Prepare the request body with enable_thinking for Qwen3 models
     const requestBody = {
       model: modelId,
       messages: qwenMessages,
       stream: streamEnabled,
       temperature,
       max_tokens: maxTokens,
+      // Enable thinking mode for Qwen3 models when streaming
+      ...(isQwen3ThinkingModel && streamEnabled && { enable_thinking: true })
     };
 
     const url = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";

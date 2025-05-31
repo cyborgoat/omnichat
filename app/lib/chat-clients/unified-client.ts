@@ -170,16 +170,15 @@ export async function* handleUnifiedClientSide(
                   }
                 } else if (model.provider === "Google") {
                   // Handle Gemini response format
+                  // Note: As of early 2025, Google discontinued thinking content in API responses
+                  // Thinking still happens internally but is not exposed via the API
                   if (parsedData.candidates && parsedData.candidates.length > 0) {
                     const candidate = parsedData.candidates[0];
                     if (candidate.content && candidate.content.parts) {
                       for (const part of candidate.content.parts) {
                         if (part.text) {
-                          if (part.thought) {
-                            yield `__THINKING_START__\n${part.text}\n__THINKING_END__\n`;
-                          } else {
-                            yield part.text;
-                          }
+                          // Only regular content is available - no thinking content
+                          yield part.text;
                         }
                       }
                     }
@@ -189,7 +188,7 @@ export async function* handleUnifiedClientSide(
                   if (parsedData.choices && parsedData.choices.length > 0) {
                     const choice = parsedData.choices[0];
                     
-                    // Handle reasoning content for DeepSeek-R1 (Volces)
+                    // Handle reasoning content for Qwen3 thinking models and DeepSeek-R1 (Volces)
                     if (choice.delta && choice.delta.reasoning_content) {
                       yield `__THINKING_START__\n${choice.delta.reasoning_content}\n__THINKING_END__\n`;
                     }
@@ -198,10 +197,10 @@ export async function* handleUnifiedClientSide(
                     if (choice.delta && choice.delta.content) {
                       const content = choice.delta.content;
                       
-                      // Handle thinking blocks for Deepseek and Qwen
-                      if (model.provider === "Deepseek" || model.provider === "Qwen") {
-                        // Process <Thought>...</Thought> or <think>...</think> blocks
-                        const thinkingPattern = model.provider === "Deepseek" ? /<Thought>([\s\S]*?)<\/Thought>/g : /<think>([\s\S]*?)<\/think>/g;
+                      // Handle thinking blocks for DeepSeek only (Qwen3 uses reasoning_content field)
+                      if (model.provider === "Deepseek") {
+                        // Process <Thought>...</Thought> blocks for DeepSeek
+                        const thinkingPattern = /<Thought>([\s\S]*?)<\/Thought>/g;
                         let processedContent = content;
                         let match;
                         
@@ -215,6 +214,7 @@ export async function* handleUnifiedClientSide(
                           yield processedContent;
                         }
                       } else {
+                        // For OpenAI, Qwen (non-thinking), and others, yield content directly
                         yield content;
                       }
                     }
@@ -254,11 +254,8 @@ export async function* handleUnifiedClientSide(
           if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
             for (const part of candidate.content.parts) {
               if (part.text) {
-                if (part.thought) {
-                  yield `__THINKING_START__\n${part.text}\n__THINKING_END__\n`;
-                } else {
-                  yield part.text;
-                }
+                // Only regular content is available - no thinking content
+                yield part.text;
               }
             }
           }

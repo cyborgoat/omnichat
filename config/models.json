@@ -103,6 +103,13 @@
       "hasReasoning": true
     },
     {
+      "id": "qwen-plus-2025-04-28",
+      "name": "Qwen3 Plus (0428)",
+      "provider": "Qwen",
+      "apiKeyRequired": true,
+      "hasReasoning": true
+    },
+    {
       "id": "qwen-turbo-latest",
       "name": "Qwen3 Turbo (Latest)",
       "provider": "Qwen",
