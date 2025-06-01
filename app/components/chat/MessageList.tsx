@@ -203,19 +203,20 @@ export default function MessageList({ messages }: MessageListProps) {
                         type="single"
                         collapsible
                         className="w-full mt-2.5 text-xs"
+                        defaultValue={`thinking-${msg.id}`}
                       >
                         <AccordionItem
                           value={`thinking-${msg.id}`}
-                          className="border-t border-border pt-1.5"
+                          
                         >
                           <AccordionTrigger className="text-muted-foreground hover:no-underline py-1.5 px-0 text-left">
                             {/* Show shimmer only when streaming AND no response content yet (reasoning still in progress) */}
                             {msg.isStreaming && msg.thinkingSteps && msg.thinkingSteps.length > 0 && !msg.text.trim() ? (
                               <TextShimmer className="text-sm" duration={0.5}>
-                                Show Reasoning Process
+                                Thinking...
                               </TextShimmer>
                             ) : (
-                              "Show Reasoning Process"
+                              "Show Thinking Steps"
                             )}
                           </AccordionTrigger>
                           <AccordionContent className="bg-muted p-2.5 rounded-md mt-1.5">
