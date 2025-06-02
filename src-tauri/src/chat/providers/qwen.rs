@@ -9,13 +9,21 @@ use std::pin::Pin;
 pub async fn handle_qwen_request(request: ChatRequest) -> Result<Pin<Box<dyn futures_util::Stream<Item = Result<StreamChunk>> + Send>>> {
     let client = create_client(&request.proxy_settings)?;
     
-    // Qwen3 models that explicitly support enable_thinking
+    // Qwen3 models that support enable_thinking (based on Aliyun documentation)
     let qwen3_thinking_models = vec![
         "qwen-plus-latest",
         "qwen-plus-2025-04-28", 
-        "qwen-turbo-latest"
+        "qwen-plus-0428",
+        "qwen-turbo-latest",
+        "qwen-turbo-2025-04-28",
+        "qwen-turbo-0428",
+        "qwq-plus", // QwQ model
+        "qwq-32b-preview" // QwQ model
     ];
-    let is_qwen3_thinking_model = qwen3_thinking_models.contains(&request.model_id.as_str());
+    
+    let is_qwen3_thinking_model = qwen3_thinking_models.iter().any(|&model| {
+        request.model_id.contains(model) || request.model_id == model
+    });
     
     // Filter and format messages for Qwen API
     let mut api_messages = Vec::new();
@@ -52,7 +60,7 @@ pub async fn handle_qwen_request(request: ChatRequest) -> Result<Pin<Box<dyn fut
         "max_tokens": request.max_tokens.unwrap_or(4096),
     });
     
-    // Enable thinking mode for Qwen3 models when streaming
+    // Enable thinking mode for Qwen3 models when streaming (required per Aliyun docs)
     if is_qwen3_thinking_model && request.stream_enabled.unwrap_or(true) {
         request_body["enable_thinking"] = json!(true);
     }
@@ -69,7 +77,7 @@ pub async fn handle_qwen_request(request: ChatRequest) -> Result<Pin<Box<dyn fut
         let error_text = response.text().await?;
         return Err(anyhow::anyhow!("API request failed: {}", error_text));
     }
-    
+
     // Handle streaming response
     let stream = response.bytes_stream().map(move |chunk_result| {
         match chunk_result {
@@ -112,8 +120,20 @@ fn parse_qwen_stream_chunk(text: &str) -> Result<StreamChunk> {
     let mut done = false;
     let mut error = None;
     
-    // Parse SSE format - look for data lines in the text
-    for line in text.lines() {
+    // Parse SSE format properly - split by lines and process each SSE event
+    let lines: Vec<&str> = text.lines().collect();
+    let mut i = 0;
+    
+    while i < lines.len() {
+        let line = lines[i].trim();
+        
+        // Skip empty lines
+        if line.is_empty() {
+            i += 1;
+            continue;
+        }
+        
+        // Parse SSE data lines
         if line.starts_with("data: ") {
             let data_content = line[6..].trim();
             
@@ -123,25 +143,36 @@ fn parse_qwen_stream_chunk(text: &str) -> Result<StreamChunk> {
             }
             
             if let Ok(parsed) = serde_json::from_str::<Value>(data_content) {
-                // Handle OpenAI-compatible format
+                // Handle OpenAI-compatible format as per Aliyun docs
                 if let Some(choices) = parsed["choices"].as_array() {
                     if let Some(choice) = choices.get(0) {
+                        // Handle streaming delta content
                         if let Some(delta) = choice.get("delta") {
-                            // Handle reasoning content for Qwen3 thinking models
-                            if let Some(reasoning_content) = delta["reasoning_content"].as_str() {
-                                thinking_content = Some(reasoning_content.to_string());
+                            // Handle reasoning content for Qwen3 thinking models (per Aliyun docs)
+                            if let Some(reasoning_content_val) = delta.get("reasoning_content") {
+                                if let Some(reasoning_text) = reasoning_content_val.as_str() {
+                                    if !reasoning_text.trim().is_empty() {
+                                        thinking_content = Some(reasoning_text.to_string());
+                                    }
+                                }
                             }
                             
                             // Handle regular content
-                            if let Some(text) = delta["content"].as_str() {
-                                content = Some(text.to_string());
+                            if let Some(content_val) = delta.get("content") {
+                                if let Some(content_text) = content_val.as_str() {
+                                    if !content_text.trim().is_empty() {
+                                        content = Some(content_text.to_string());
+                                    }
+                                }
                             }
                         }
                         
                         // Check for finish reason
-                        if let Some(finish_reason) = choice["finish_reason"].as_str() {
-                            if finish_reason == "stop" {
-                                done = true;
+                        if let Some(finish_reason) = choice.get("finish_reason") {
+                            if let Some(finish_reason_str) = finish_reason.as_str() {
+                                if finish_reason_str == "stop" || finish_reason_str == "length" {
+                                    done = true;
+                                }
                             }
                         }
                     }
@@ -149,11 +180,20 @@ fn parse_qwen_stream_chunk(text: &str) -> Result<StreamChunk> {
                 
                 // Handle errors
                 if let Some(error_obj) = parsed.get("error") {
-                    error = Some(error_obj["message"].as_str().unwrap_or("API Error").to_string());
+                    if let Some(error_message) = error_obj.get("message") {
+                        error = Some(error_message.as_str().unwrap_or("API Error").to_string());
+                    } else {
+                        error = Some("Unknown API Error".to_string());
+                    }
                     done = true;
                 }
+            } else {
+                // If we can't parse as JSON, it might be malformed data
+                eprintln!("Failed to parse Qwen SSE data as JSON: {}", data_content);
             }
         }
+        
+        i += 1;
     }
     
     Ok(StreamChunk {

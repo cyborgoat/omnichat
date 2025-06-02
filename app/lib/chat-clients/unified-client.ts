@@ -156,12 +156,13 @@ export async function* handleUnifiedClientSide(
 
                 // Handle different provider response formats
                 if (model.provider === "Anthropic") {
-                  // Handle Anthropic event types
+                  // Handle Anthropic event types - fix first chunk issue
                   if (parsedData.type === "content_block_delta") {
                     if (parsedData.delta?.type === "text_delta" && parsedData.delta?.text) {
                       yield parsedData.delta.text;
                     }
                   } else if (parsedData.type === "content_block_start") {
+                    // IMPORTANT: This handles the first chunk that contains initial content
                     if (parsedData.content_block?.type === "text" && parsedData.content_block?.text) {
                       yield parsedData.content_block.text;
                     }
@@ -169,15 +170,13 @@ export async function* handleUnifiedClientSide(
                     return;
                   }
                 } else if (model.provider === "Google") {
-                  // Handle Gemini response format
-                  // Note: As of early 2025, Google discontinued thinking content in API responses
-                  // Thinking still happens internally but is not exposed via the API
+                  // Handle Gemini response format - simple, no artificial thinking detection
                   if (parsedData.candidates && parsedData.candidates.length > 0) {
                     const candidate = parsedData.candidates[0];
                     if (candidate.content && candidate.content.parts) {
                       for (const part of candidate.content.parts) {
                         if (part.text) {
-                          // Only regular content is available - no thinking content
+                          // Simply yield the text content without artificial processing
                           yield part.text;
                         }
                       }
@@ -188,35 +187,15 @@ export async function* handleUnifiedClientSide(
                   if (parsedData.choices && parsedData.choices.length > 0) {
                     const choice = parsedData.choices[0];
                     
-                    // Handle reasoning content for Qwen3 thinking models and DeepSeek-R1 (Volces)
+                    // Handle reasoning content first - unified approach for all OpenAI-compatible providers
                     if (choice.delta && choice.delta.reasoning_content) {
+                      // Ensure thinking content is yielded immediately
                       yield `__THINKING_START__\n${choice.delta.reasoning_content}\n__THINKING_END__\n`;
                     }
                     
                     // Handle regular content
                     if (choice.delta && choice.delta.content) {
-                      const content = choice.delta.content;
-                      
-                      // Handle thinking blocks for DeepSeek only (Qwen3 uses reasoning_content field)
-                      if (model.provider === "Deepseek") {
-                        // Process <Thought>...</Thought> blocks for DeepSeek
-                        const thinkingPattern = /<Thought>([\s\S]*?)<\/Thought>/g;
-                        let processedContent = content;
-                        let match;
-                        
-                        while ((match = thinkingPattern.exec(content)) !== null) {
-                          const thinkingContent = match[1].trim();
-                          yield `__THINKING_START__\n${thinkingContent}\n__THINKING_END__\n`;
-                          processedContent = processedContent.replace(match[0], '');
-                        }
-                        
-                        if (processedContent.trim()) {
-                          yield processedContent;
-                        }
-                      } else {
-                        // For OpenAI, Qwen (non-thinking), and others, yield content directly
-                        yield content;
-                      }
+                      yield choice.delta.content;
                     }
                   }
                 }
@@ -248,13 +227,13 @@ export async function* handleUnifiedClientSide(
           }
         }
       } else if (model.provider === "Google") {
-        // Handle Gemini non-streaming response
+        // Handle Gemini non-streaming response - simple, no artificial thinking detection
         if (responseData.candidates && responseData.candidates.length > 0) {
           const candidate = responseData.candidates[0];
           if (candidate.content && candidate.content.parts && candidate.content.parts.length > 0) {
             for (const part of candidate.content.parts) {
               if (part.text) {
-                // Only regular content is available - no thinking content
+                // Simply yield the text content without artificial processing
                 yield part.text;
               }
             }

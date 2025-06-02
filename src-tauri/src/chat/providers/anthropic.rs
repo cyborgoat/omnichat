@@ -129,7 +129,10 @@ fn parse_anthropic_stream_chunk(text: &str) -> Result<StreamChunk> {
                             if let Some(content_block) = parsed.get("content_block") {
                                 if content_block["type"] == "text" {
                                     if let Some(text) = content_block["text"].as_str() {
-                                        content = Some(text.to_string());
+                                        // Only yield if there's actually text content (not empty)
+                                        if !text.trim().is_empty() {
+                                            content = Some(text.to_string());
+                                        }
                                     }
                                 }
                             }

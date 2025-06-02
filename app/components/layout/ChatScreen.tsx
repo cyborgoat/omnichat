@@ -169,7 +169,21 @@ export default function ChatScreen() {
       console.error("No active chat session to send message.");
       return;
     }
-    if (!messageText.trim() && (!files || files.length === 0)) return;
+    
+    // Check for empty message and provide user feedback
+    if (!messageText.trim() && (!files || files.length === 0)) {
+      // Add a helpful bot message to guide the user
+      const helpMessageId = uuidv4();
+      const helpMessage: Message = {
+        id: helpMessageId,
+        type: "message",
+        text: "Please enter a message to get started! I'm here to help you with any questions or tasks you have.",
+        sender: "bot",
+        timestamp: new Date().toISOString(),
+      };
+      store.addMessageToSession(activeSession.id, helpMessage);
+      return;
+    }
 
     store.setSendingMessage(true);
 
