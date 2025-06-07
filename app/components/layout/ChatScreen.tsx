@@ -238,13 +238,42 @@ export default function ChatScreen() {
       return;
     }
 
-    const currentModel = store.availableModels.find(
+    // Look for model in both available models and custom models
+    const allModels = [...store.availableModels, ...store.customModels];
+    
+    console.log("DEBUG: Model lookup details:", {
+      searchingForModelId: currentSessionState.modelId,
+      availableModels: store.availableModels.length,
+      customModels: store.customModels.length,
+      allModelsCount: allModels.length,
+      allModelIds: allModels.map(m => m.id),
+      customModelDetails: store.customModels.map(m => ({ id: m.id, name: m.name, provider: m.provider }))
+    });
+    
+    let currentModel = allModels.find(
       (m) => m.id === currentSessionState.modelId
     );
+    
+    // Fallback: if not found by ID, try to find by name for custom models
+    if (!currentModel && currentSessionState.modelId.startsWith('custom-')) {
+      console.log("Model not found by ID, trying to match by name...");
+      currentModel = store.customModels.find(m => 
+        m.id.includes(currentSessionState.modelId.replace('custom-', '')) ||
+        m.name.toLowerCase().includes(currentSessionState.modelId.replace('custom-', '').replace(/-/g, ' '))
+      );
+      if (currentModel) {
+        console.log("Found model by name fallback:", currentModel);
+      }
+    }
 
     if (!currentModel || !currentModel.provider) {
       const errorText =
-        "Error: Selected model configuration or provider not found. Please try another model.";
+        `Error: Model "${currentSessionState.modelId}" not found. Available models: ${allModels.map(m => `${m.name} (${m.id})`).join(', ')}`;
+      console.error("Model lookup failed:", {
+        searchingForModelId: currentSessionState.modelId,
+        availableModelIds: allModels.map(m => m.id),
+        availableModels: allModels.map(m => ({ id: m.id, name: m.name, provider: m.provider }))
+      });
       store.updateMessageContent(
         currentSessionState.id,
         botMessageId,

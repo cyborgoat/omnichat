@@ -11,8 +11,9 @@ export async function* handleUnifiedClientSide(
 
   try {
     // Find the provider for this model
-    const { availableModels } = useChatStore.getState();
-    const model = availableModels.find(m => m.id === request.modelId);
+    const { availableModels, customModels } = useChatStore.getState();
+    const allModels = [...availableModels, ...customModels];
+    const model = allModels.find(m => m.id === request.modelId);
     
     if (!model) {
       throw new Error(`Model "${request.modelId}" not found in available models`);
@@ -39,6 +40,9 @@ export async function* handleUnifiedClientSide(
       case "Volces":
         apiEndpoint = "/api/chat/volces";
         break;
+      case "Custom":
+        apiEndpoint = "/api/chat/custom";
+        break;
       default:
         throw new Error(`Unsupported provider: ${model.provider}`);
     }
@@ -49,7 +53,7 @@ export async function* handleUnifiedClientSide(
     }
 
     // Prepare the request body for our API route
-    const requestBody = {
+    const requestBody: Record<string, unknown> = {
       modelId: request.modelId,
       messages: request.messages,
       apiKey: request.apiKey.trim(),
@@ -62,6 +66,11 @@ export async function* handleUnifiedClientSide(
           systemPrompt: request.systemPrompt.trim(),
         }),
     };
+
+    // Add custom configuration for custom models
+    if (model.provider === "Custom" && model.customConfig) {
+      requestBody.customConfig = model.customConfig;
+    }
 
     console.log(`Making ${model.provider} API request via server route:`, apiEndpoint);
     if (proxySettings.enabled) {
@@ -182,6 +191,14 @@ export async function* handleUnifiedClientSide(
                       }
                     }
                   }
+                } else if (model.provider === "Custom") {
+                  // Handle custom model response format
+                  if (parsedData.thinking_content) {
+                    yield `__THINKING_START__${parsedData.thinking_content}__THINKING_END__`;
+                  }
+                  if (parsedData.content) {
+                    yield parsedData.content;
+                  }
                 } else {
                   // Handle OpenAI-compatible format (OpenAI, Deepseek, Qwen, Volces)
                   if (parsedData.choices && parsedData.choices.length > 0) {
@@ -190,7 +207,7 @@ export async function* handleUnifiedClientSide(
                     // Handle reasoning content first - unified approach for all OpenAI-compatible providers
                     if (choice.delta && choice.delta.reasoning_content) {
                       // Ensure thinking content is yielded immediately
-                      yield `__THINKING_START__\n${choice.delta.reasoning_content}\n__THINKING_END__\n`;
+                      yield `__THINKING_START__${choice.delta.reasoning_content}__THINKING_END__`;
                     }
                     
                     // Handle regular content
@@ -238,6 +255,14 @@ export async function* handleUnifiedClientSide(
               }
             }
           }
+        }
+      } else if (model.provider === "Custom") {
+        // Handle custom model non-streaming response
+        if (responseData.thinking) {
+          yield `__THINKING_START__${responseData.thinking}__THINKING_END__`;
+        }
+        if (responseData.content) {
+          yield responseData.content;
         }
       } else {
         // Handle OpenAI-compatible non-streaming response

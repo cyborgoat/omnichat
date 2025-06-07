@@ -58,7 +58,7 @@ export async function* handleTauriChat(request: ChatRequest): AsyncGenerator<str
       }
 
       if (chunk.thinking_content) {
-        const thinkingChunk = `__THINKING_START__\n${chunk.thinking_content}\n__THINKING_END__\n`;
+        const thinkingChunk = `__THINKING_START__${chunk.thinking_content}__THINKING_END__`;
         if (resolveNext) {
           resolveNext({ value: thinkingChunk, done: false });
           resolveNext = null;

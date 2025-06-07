@@ -1,268 +1,150 @@
-# Omnichat - Your All-in-One LLM Chat Application
+# Omnichat - All-in-One LLM Chat Application
 
-Omnichat is a versatile chat application that allows you to interact with various Large Language Models (LLMs) from different providers, all within a single, intuitive interface. Available as both a web application and a native desktop app, it's built with Next.js, Tailwind CSS, Shadcn UI, and Tauri for a modern, responsive, and cross-platform experience.
+A modern chat application for interacting with multiple AI models from different providers. Available as both a web app and desktop application.
 
-> **Latest Update (v1.1.4)**: Enhanced reasoning model support with brain icons, improved shimmer effects for LLM activity states, comfortable dark theme refinements, and streamlined model configuration management for a more intuitive user experience.
+## ✨ Key Features
 
-## Features
+- **🌐 Multi-Provider Support**: OpenAI, Claude, Gemini, DeepSeek, Qwen, and custom models
+- **🧠 Reasoning Models**: Special support for thinking/reasoning models with visual indicators
+- **💻 Cross-Platform**: Web app + native desktop app (Windows, macOS, Linux)
+- **🔧 Custom Models**: Add your own vLLM, Ollama, or OpenAI-compatible endpoints
+- **🌍 Proxy Support**: Full SOCKS5/HTTP proxy support for restricted regions
+- **💬 Advanced Chat**: Real-time streaming, markdown rendering, file uploads
+- **🎨 Modern UI**: Dark/light themes, responsive design, smooth animations
 
-### 🚀 **Desktop & Web Application**
-- **Native Desktop App**: Built with Tauri 2.0 for Windows, macOS, and Linux
-- **Web Application**: Accessible via any modern web browser
-- **Cross-Platform**: Consistent experience across all platforms
+## 🚀 Quick Start
 
-### 💬 **Advanced Chat Interface**
-- **Unified Chat Interface**: Seamlessly switch between different chat sessions
-- **Rich Message Display**: 
-  - User and bot message distinction with improved UI
-  - Timestamps below message bubbles
-  - Consistent, readable font sizes
-  - Markdown rendering for bot responses with syntax-highlighted code blocks
-  - Copy-to-clipboard functionality for code blocks
-  - Theme-aware styling for optimal visibility in light and dark modes
-- **Real-time Streaming**: Live message streaming from LLM providers
-- **Animated Indicators**: Visual feedback for message sending and bot thinking states with dynamic shimmer effects
-- **Reasoning Process Visualization**: Expandable thinking process display for reasoning-capable models
-- **File Upload Support**: Attach text and image files with previews and validation
+### 1. Installation
+```bash
+git clone https://github.com/cyborgoat/omnichat
+cd omnichat
+npm install
+```
 
-### 🧠 **Intelligent Model Management**
-- **Reasoning Model Recognition**: Automatic identification and visual distinction of reasoning-capable models
-  - Brain icons (`🧠`) for models with advanced reasoning capabilities
-  - Smart detection of OpenAI o3, DeepSeek R1, Qwen reasoning models, and Claude advanced models
-  - Enhanced UI feedback for reasoning process states
-- **Dynamic Model Selection**: Switch LLM models per session on the fly
-- **Provider Grouping**: Models organized by provider for easy selection
-- **Centralized Configuration**: JSON-based model definitions for easier maintenance
+### 2. Run the App
+```bash
+# Web application
+npm run dev
+# Open http://localhost:3000
 
-### 🎛️ **Comprehensive Settings Management**
-- **Settings Dialog**: Centralized settings management with tabbed interface
-  - **Profile Settings**: Configure username and avatar URL with localStorage persistence
-  - **API Key Management**: Secure management of all provider API keys with show/hide functionality
-  - **Models Configuration**: Visual model selection with reasoning capability indicators
-- **Form Validation**: Built with react-hook-form and Zod for robust input validation
-- **Toast Notifications**: User-friendly feedback using Sonner for all actions
+# Desktop application
+npm run tauri:dev
+```
 
-### 🔧 **Smart Side Menu**
-- **Collapsible Design**: Space-efficient interface with smooth animations
-- **Chat Session Management**: Create, rename, delete, and organize chat sessions
-- **Model Selection with Visual Cues**: Brain icons distinguish reasoning models in sidebar
-- **Global System Prompt**: 
-  - Advanced prompt management with apply/undo functionality
-  - Visual indicators for unsaved changes
-  - Session-specific prompt application
-- **Enhanced Theme Toggle**: Improved responsiveness and comfortable dark theme colors
+### 3. Add API Keys
+- Click the Settings icon in the sidebar
+- Go to "API Keys" tab
+- Add keys for the providers you want to use:
+  - **OpenAI**: [platform.openai.com](https://platform.openai.com/api-keys)
+  - **Claude**: [console.anthropic.com](https://console.anthropic.com/)
+  - **Gemini**: [makersuite.google.com](https://makersuite.google.com/app/apikey)
+  - **DeepSeek**: [platform.deepseek.com](https://platform.deepseek.com/)
+  - **Qwen**: [dashscope.aliyun.com](https://dashscope.aliyun.com/)
 
-### 🌐 **Advanced Network & Proxy Support**
-- **Comprehensive Proxy Integration**: Full support for users in restricted regions
-  - SOCKS5, HTTP, and HTTPS proxy protocols with intelligent priority selection
-  - Curl-based implementation for reliable proxy compatibility
-  - Seamless regional access to all supported AI providers
-- **Smart Proxy Management**: Easy configuration through Advanced Settings
-  - Visual proxy status indicators and testing functionality
-  - Automatic fallback and error handling
-  - Support for authenticated and unauthenticated proxies
+### 4. Start Chatting!
+- Select a model from the dropdown
+- Type your message and press Enter
+- Switch models anytime during conversation
 
-### 🌐 **Multi-Provider Support**
-- **OpenAI**: GPT-4, GPT-4 Turbo, GPT-3.5 Turbo
-- **Google Gemini**: Gemini 1.5 Pro, Gemini 1.0 Pro
-- **Anthropic Claude**: Claude 3 Opus, Sonnet, and Haiku
-- **Deepseek**: DeepSeek Chat and Coder models
-- **Alibaba Qwen**: Qwen Turbo, Plus, Max, and QwQ Deep Thinking models (via Dashscope)
-- **Volces (Volcengine)**: DeepSeek-R1, DeepSeek-V3
-- **Extensible Architecture**: Easy to add new providers
+## 🔧 Custom Models Setup
 
-### 🎨 **Modern UI/UX**
-- **Responsive Design**: Optimized for all screen sizes
-- **Dark/Light Theme**: System-aware theme switching
-- **Smooth Animations**: Framer Motion for polished interactions
-- **Compact Forms**: Optimized spacing and typography for better usability
-- **Accessibility**: ARIA labels and keyboard navigation support
+Add your own AI models (vLLM, Ollama, etc.):
 
-### 💾 **Persistent State Management**
-- **Zustand Store**: Efficient global state management
-- **localStorage Persistence**: Chat sessions, API keys, and preferences saved locally
-- **Session Restoration**: Automatic restoration of previous state on app restart
+### vLLM Example
+```bash
+# Start vLLM server
+python -m vllm.entrypoints.openai_api_server \
+    --model Qwen/Qwen2.5-7B-Instruct \
+    --port 8000
+```
 
-## Getting Started
+### Ollama Example  
+```bash
+# Start Ollama
+ollama serve
+# Pull a model
+ollama pull llama3.2
+```
+
+### Add to Omnichat
+1. Go to Settings → Models → Custom Models
+2. Click "Add Model"
+3. Configure:
+   - **Name**: "My Local Model"
+   - **Endpoint**: `http://localhost:8000` (vLLM) or `http://localhost:11434` (Ollama)
+   - **Model**: `Qwen/Qwen2.5-7B-Instruct` or `llama3.2`
+   - **Reasoning**: Enable if model supports thinking
+4. Test connection and save
+
+## 🌍 Proxy Setup (For Restricted Regions)
+
+1. Go to Settings → Advanced → Proxy Settings
+2. Configure your proxy:
+   - **SOCKS5**: `socks5://127.0.0.1:1080`
+   - **HTTP**: `http://proxy.example.com:8080`
+3. Test connection and enable
+
+## 📱 Supported Models
+
+### Reasoning Models (🧠)
+- OpenAI o1, o1-mini, o1-preview
+- DeepSeek R1, DeepSeek V3
+- Qwen QwQ-32B-Preview
+- Claude 3.5 Sonnet
+
+### Standard Models
+- GPT-4, GPT-4 Turbo, GPT-3.5
+- Claude 3 Opus, Sonnet, Haiku
+- Gemini 1.5 Pro, Gemini 1.0 Pro
+- DeepSeek Chat, Coder
+- Qwen Turbo, Plus, Max
+- Custom vLLM/Ollama models
+
+## 🛠️ Development
 
 ### Prerequisites
+- Node.js 18+
+- Rust (for desktop builds)
 
-- Node.js (v18 or newer recommended)
-- npm, yarn, or pnpm
-- Rust (for desktop app builds)
-
-### Installation & Setup
-
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/cyborgoat/omnichat
-    cd omnichat
-    ```
-
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    # or
-    yarn install
-    # or
-    pnpm install
-    ```
-
-3.  **API Keys Setup:**
-    Omnichat requires API keys for the LLM providers you wish to use:
-    - **OpenAI**: Get your API key from [OpenAI Platform](https://platform.openai.com/api-keys)
-    - **Google Gemini**: Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-    - **Anthropic Claude**: Get your API key from [Anthropic Console](https://console.anthropic.com/)
-    - **Deepseek**: Get your API key from [Deepseek Platform](https://platform.deepseek.com/)
-    - **Alibaba Qwen**: Get your API key from [Alibaba Cloud Dashscope](https://dashscope.aliyun.com/)
-    - **Volces (Volcengine)**: Get your API key from [Volcengine Console](https://console.volcengine.com/ark/)
-    
-    Enter these keys in the Settings dialog (accessible via the settings icon in the side menu).
-
-### Running the Application
-
-#### Web Application (Development)
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-```
-Open [http://localhost:3000](http://localhost:3000) with your browser.
-
-#### Desktop Application (Development)
-```bash
-# Development mode (includes API routes via proxy)
-npm run tauri:dev
-# or
-yarn tauri:dev
-```
-
-#### Production Builds
-
-**Web Deployment (with API routes):**
-```bash
-npm run build:web
-# or
-yarn build:web
-```
-
-**Desktop Application (static export):**
-```bash
-npm run tauri:build
-# or
-yarn tauri:build
-```
-
-**Note:** The application features a unified client-side architecture with hybrid proxy support:
-- **Consistent API Handling**: All LLM provider interactions use direct client-side API calls by default
-- **Intelligent Proxy Routing**: Automatic server-side curl implementation when proxy is enabled for maximum compatibility
-- **Cross-Platform Compatibility**: Same codebase works perfectly in both web and desktop environments
-- **Simplified Deployment**: No server-side dependencies required for standard deployment modes
-- **CORS-Optimized**: Uses provider-specific endpoints that support browser-based requests
-
-This streamlined architecture ensures:
-- ✅ **Web deployments** work as static sites without requiring a server (unless proxy is needed)
-- ✅ **Desktop builds** work identically to web builds with full proxy support
-- ✅ **Regional Access**: Reliable proxy support for users in restricted regions
-- ✅ **Simplified maintenance** with unified API handling logic
-- ✅ **Better performance** with direct provider communication or optimized proxy routing
-
-## Project Structure
-
-```
-omnichat/
-├── app/                          # Next.js App Router
-│   ├── components/
-│   │   ├── chat/                # Chat-specific components
-│   │   │   ├── ChatInput.tsx
-│   │   │   ├── MessageList.tsx
-│   │   │   └── WelcomeScreen.tsx
-│   │   ├── layout/              # Layout components
-│   │   │   ├── ChatScreen.tsx
-│   │   │   └── LeftSideMenu.tsx
-│   │   ├── settings/            # Settings management
-│   │   │   ├── SettingsDialog.tsx
-│   │   │   ├── ProfileSettingsForm.tsx
-│   │   │   └── ApiKeysSettingsForm.tsx
-│   │   ├── ui/                  # Shadcn UI components
-│   │   └── ThemeProvider.tsx
-│   ├── lib/
-│   │   └── chat-client.ts       # Unified client-side API handlers
-│   ├── store/
-│   │   └── chatStore.ts         # Zustand global state
-│   ├── globals.css              # Global styles & theme variables
-│   ├── layout.tsx               # Root layout with Toaster
-│   └── page.tsx                 # Main page component
-├── src-tauri/                   # Tauri desktop app configuration
-│   ├── tauri.conf.json         # Tauri settings
-│   └── src/                    # Rust backend (minimal)
-├── components/                  # Shadcn UI components
-├── public/                      # Static assets
-└── next.config.ts              # Next.js config for static export
-```
-
-## Tech Stack
-
-- **Frontend**: Next.js 15, React 19, TypeScript
-- **Styling**: Tailwind CSS 4, Shadcn UI
-- **State Management**: Zustand with localStorage persistence
-- **Forms**: React Hook Form with Zod validation
-- **Animations**: Framer Motion
-- **Icons**: Lucide React
-- **Notifications**: Sonner
-- **Desktop**: Tauri 2.0
-- **LLM Integration**: OpenAI, Google Gemini, Anthropic, Deepseek, Alibaba Qwen APIs
-
-## Available Scripts
-
+### Commands
 ```bash
 # Development
-npm run dev          # Start Next.js dev server
-npm run tauri:dev    # Start Tauri dev mode (desktop)
+npm run dev              # Web app
+npm run tauri:dev        # Desktop app
 
 # Production builds
-npm run build:web    # Build for web deployment (static export)
-npm run build:tauri  # Build for Tauri (same as web build)
-npm run tauri:build  # Build complete desktop application
+npm run build:web        # Web deployment
+npm run tauri:build      # Desktop executable
 
-# Other scripts
-npm run build        # Default build (static export)
-npm run start        # Start production server (web only)
-npm run lint         # Run ESLint
-npm run tauri        # Tauri CLI access
+# Linting
+npm run lint             # Check code quality
 ```
 
-## Configuration
+## 🏗️ Architecture
 
-### Environment Variables
-No environment variables are required. All API keys are managed through the Settings dialog and stored securely in localStorage.
+- **Frontend**: Next.js 15, React 18, TypeScript
+- **UI**: Tailwind CSS, Shadcn/ui, Framer Motion
+- **State**: Zustand with localStorage persistence
+- **Desktop**: Tauri 2.0 (Rust backend)
+- **Validation**: Zod schemas, react-hook-form
 
-### Tauri Configuration
-Desktop app settings can be modified in `src-tauri/tauri.conf.json`:
-- Window dimensions and behavior
-- App metadata and icons
-- Security policies
+## 📄 License
 
-## Contributing
+MIT License - see [LICENSE](LICENSE) file for details.
 
-Contributions are welcome! Please feel free to submit issues and pull requests.
+## 🤝 Contributing
 
-### Development Guidelines
-- Follow TypeScript best practices
-- Use Tailwind CSS for styling
-- Maintain component modularity
-- Add proper error handling
-- Include appropriate TypeScript types
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run `npm run lint` to check code quality
+5. Submit a pull request
 
-## License
+## 🐛 Issues & Support
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+- **Bug Reports**: [GitHub Issues](https://github.com/cyborgoat/omnichat/issues)
+- **Feature Requests**: [GitHub Discussions](https://github.com/cyborgoat/omnichat/discussions)
 
-## Acknowledgments
+---
 
-- [Shadcn UI](https://ui.shadcn.com/) for the beautiful component library
-- [Tauri](https://tauri.app/) for the desktop app framework
-- [Zustand](https://github.com/pmndrs/zustand) for state management
-- All the LLM providers for their APIs
+**Made with ❤️ for the AI community**

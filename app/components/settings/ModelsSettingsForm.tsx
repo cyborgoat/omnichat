@@ -12,27 +12,30 @@ import { useChatStore } from "@/app/store/chatStore";
 import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { Brain } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import CustomModelsForm from "./CustomModelsFormSimple";
 
 interface ModelsSettingsFormProps {
   setIsDirty: (isDirty: boolean) => void;
 }
 
 export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
-  const { availableModels, enabledModelIds, setEnabledModels } = useChatStore();
+  const { availableModels, customModels, enabledModelIds, setEnabledModels } = useChatStore();
   const [selectedModelIds, setSelectedModelIds] = useState<string[]>(enabledModelIds);
 
   useEffect(() => {
     setSelectedModelIds(enabledModelIds);
   }, [enabledModelIds]);
 
-  // Group models by provider
-  const groupedModels = availableModels.reduce((acc, model) => {
+  // Group models by provider (including custom models)
+  const allModels = [...availableModels, ...customModels];
+  const groupedModels = allModels.reduce((acc, model) => {
     if (!acc[model.provider]) {
       acc[model.provider] = [];
     }
     acc[model.provider].push(model);
     return acc;
-  }, {} as Record<string, typeof availableModels>);
+  }, {} as Record<string, typeof allModels>);
 
   const handleModelToggle = (modelId: string, checked: boolean) => {
     if (checked) {
@@ -44,7 +47,7 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
   };
 
   const handleSelectAll = () => {
-    setSelectedModelIds(availableModels.map(m => m.id));
+    setSelectedModelIds(allModels.map(m => m.id));
     setIsDirty(true);
   };
 
@@ -78,32 +81,47 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
   return (
     <div className="space-y-4 py-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-md font-medium">Active Models</h3>
-        <div className="flex gap-2">
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="sm" 
-            onClick={handleSelectAll}
-            className="text-xs"
-          >
-            Select All
-          </Button>
-          <Button 
-            type="button" 
-            variant="outline" 
-            size="sm" 
-            onClick={handleDeselectAll}
-            className="text-xs"
-          >
-            Deselect All
-          </Button>
-        </div>
+        <h3 className="text-md font-medium">Models Configuration</h3>
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Choose which models appear in the sidebar model selection menu. Only selected models will be available for new chats.
+        Manage your available AI models. Standard models are pre-configured, while custom models allow you to add your own OpenAI-compatible endpoints.
       </p>
+
+      <Tabs defaultValue="standard" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="standard">Standard Models</TabsTrigger>
+          <TabsTrigger value="custom">Custom Models</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="standard" className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium">Active Standard Models</h4>
+            <div className="flex gap-2">
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSelectAll}
+                className="text-xs"
+              >
+                Select All
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={handleDeselectAll}
+                className="text-xs"
+              >
+                Deselect All
+              </Button>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Choose which models appear in the sidebar model selection menu. Only selected models will be available for new chats.
+          </p>
 
       <Accordion type="multiple" defaultValue={Object.keys(groupedModels)} className="w-full">
         {Object.entries(groupedModels).map(([provider, models]) => {
@@ -160,6 +178,7 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
                         <div className="flex items-center gap-1">
                           <span>{model.name}</span>
                           {model.hasReasoning && <Brain size={16} className="text-slate-600 dark:text-slate-400 !size-3.5" />}
+                          {model.isCustom && <span className="text-xs text-blue-600 dark:text-blue-400">(Custom)</span>}
                         </div>
                       </label>
                     </div>
@@ -173,7 +192,7 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
 
       <div className="pt-2 flex justify-between items-center">
         <div className="text-xs text-muted-foreground">
-          {selectedModelIds.length} of {availableModels.length} models selected
+          {selectedModelIds.length} of {allModels.length} models selected
         </div>
         <Button 
           onClick={handleSave} 
@@ -184,6 +203,12 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
           Save Model Settings
         </Button>
       </div>
+          </TabsContent>
+          
+          <TabsContent value="custom">
+            <CustomModelsForm setIsDirty={setIsDirty} />
+          </TabsContent>
+        </Tabs>
     </div>
   );
 }

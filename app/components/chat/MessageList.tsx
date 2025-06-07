@@ -207,7 +207,6 @@ export default function MessageList({ messages }: MessageListProps) {
                       >
                         <AccordionItem
                           value={`thinking-${msg.id}`}
-                          
                         >
                           <AccordionTrigger className="text-muted-foreground hover:no-underline py-1.5 px-0 text-left">
                             {/* Show shimmer only when streaming AND no response content yet (reasoning still in progress) */}
@@ -220,8 +219,14 @@ export default function MessageList({ messages }: MessageListProps) {
                             )}
                           </AccordionTrigger>
                           <AccordionContent className="bg-muted p-2.5 rounded-md mt-1.5">
-                            <div className="text-muted-foreground whitespace-pre-wrap text-xs leading-relaxed">
-                              {msg.thinkingSteps.join("")}
+                            <div className="text-muted-foreground text-xs leading-relaxed prose prose-xs max-w-none">
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                rehypePlugins={[rehypeRaw]}
+                                components={{ code: CodeBlock }}
+                              >
+                                {msg.thinkingSteps.join("").replace(/([.!?])\s*([A-Z])/g, "$1 $2").replace(/\s+/g, " ").trim()}
+                              </ReactMarkdown>
                             </div>
                           </AccordionContent>
                         </AccordionItem>

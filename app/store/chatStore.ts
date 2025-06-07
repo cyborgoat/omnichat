@@ -8,10 +8,23 @@ import modelsConfig from "@/config/models.json";
 export interface Model {
   id: string;
   name: string;
-  provider: string; // e.g., "OpenAI", "Google", "Anthropic", "Deepseek", "Qwen"
+  provider: string; // e.g., "OpenAI", "Google", "Anthropic", "Deepseek", "Qwen", "Custom"
   apiKeyRequired: boolean;
   hasReasoning?: boolean; // Indicates if the model has reasoning/thinking capabilities
+  isCustom?: boolean; // Indicates if this is a user-defined custom model
+  customConfig?: CustomModelConfig; // Configuration for custom OpenAI-compatible endpoints
   // Potentially add model-specific params like context window size, vision support, etc.
+}
+
+export interface CustomModelConfig {
+  apiEndpoint: string; // Base URL for the OpenAI-compatible API
+  modelName: string; // Model name to send in the request
+  supportsStreaming?: boolean; // Whether the endpoint supports streaming
+  supportsThinking?: boolean; // Whether the endpoint supports thinking
+  thinkingParameterName?: string; // Custom parameter name for thinking (e.g., "enable_thinking", "reasoning", etc.)
+  defaultTemperature?: number; // Default temperature for this model
+  defaultMaxTokens?: number; // Default max tokens for this model
+  headers?: Record<string, string>; // Additional headers to send with requests
 }
 
 export interface Message {
@@ -72,6 +85,7 @@ const DEFAULT_MODEL_SETTINGS: ModelSettings = {
 interface PersistedChatState {
   isMenuCollapsed: boolean;
   availableModels: Model[];
+  customModels: Model[]; // Store custom models separately
   enabledModelIds: string[];
   selectedModelId: string | null;
   apiKeys: ApiKeys;
@@ -133,6 +147,9 @@ export interface ChatState extends PersistedChatState {
   setCurrentAbortController: (controller: AbortController | null) => void;
   stopCurrentGeneration: () => void;
   syncAvailableModels: () => void;
+  addCustomModel: (model: Model) => void;
+  updateCustomModel: (modelId: string, updates: Partial<Model>) => void;
+  deleteCustomModel: (modelId: string) => void;
 }
 
 const initialModels: Model[] = modelsConfig.models;
@@ -143,6 +160,7 @@ export const useChatStore = create<ChatState>()(
       // Initial Persisted State
       isMenuCollapsed: false,
       availableModels: initialModels,
+      customModels: [], // Initialize empty custom models array
       enabledModelIds: initialModels.map((m) => m.id), // Initially all models are enabled
       selectedModelId: initialModels[0]?.id || null,
       apiKeys: {},
@@ -196,7 +214,8 @@ export const useChatStore = create<ChatState>()(
           console.error("No model available to create a new chat session.");
           return "error-no-model-selected";
         }
-        const modelDetails = get().availableModels.find(
+        const allModels = [...get().availableModels, ...get().customModels];
+        const modelDetails = allModels.find(
           (m) => m.id === modelToUse
         );
         const sessionName =
@@ -434,6 +453,36 @@ export const useChatStore = create<ChatState>()(
         console.log("Available models synced with latest configuration from models.json");
         toast.success("Model list updated with latest available models");
       },
+
+      // Custom model management actions
+      addCustomModel: (model: Model) => {
+        set((state) => {
+          const newCustomModels = [...state.customModels, model];
+          return {
+            customModels: newCustomModels,
+            enabledModelIds: [...state.enabledModelIds, model.id],
+          };
+        });
+        toast.success(`Custom model "${model.name}" added successfully!`);
+      },
+
+      updateCustomModel: (modelId: string, updates: Partial<Model>) => {
+        set((state) => ({
+          customModels: state.customModels.map((model) =>
+            model.id === modelId ? { ...model, ...updates } : model
+          ),
+        }));
+        toast.success("Custom model updated successfully!");
+      },
+
+      deleteCustomModel: (modelId: string) => {
+        set((state) => ({
+          customModels: state.customModels.filter((model) => model.id !== modelId),
+          enabledModelIds: state.enabledModelIds.filter((id) => id !== modelId),
+          selectedModelId: state.selectedModelId === modelId ? null : state.selectedModelId,
+        }));
+        toast.success("Custom model deleted successfully!");
+      },
     }),
     {
       name: "omnichat-storage",
@@ -496,6 +545,12 @@ if (typeof window !== "undefined") {
       console.log("Models migrated with hasReasoning properties");
     }
 
+    // 2.5. Initialize customModels if it doesn't exist (for backward compatibility)
+    if (!currentState.customModels) {
+      console.log("Initializing customModels array for backward compatibility...");
+      useChatStore.setState({ customModels: [] });
+    }
+
     // 3. Normalize modelSettings to ensure all fields are present and valid
     const currentModelSettings = currentState.modelSettings;
     
@@ -531,9 +586,11 @@ if (typeof window !== "undefined") {
 export const useCurrentModelApiKey = () => {
   const selectedModelId = useChatStore((state) => state.selectedModelId);
   const availableModels = useChatStore((state) => state.availableModels);
+  const customModels = useChatStore((state) => state.customModels);
   const apiKeys = useChatStore((state) => state.apiKeys);
 
-  const model = availableModels.find((m) => m.id === selectedModelId);
+  const allModels = [...availableModels, ...customModels];
+  const model = allModels.find((m) => m.id === selectedModelId);
   if (model && model.apiKeyRequired) {
     return apiKeys[model.provider];
   }
@@ -543,6 +600,9 @@ export const useCurrentModelApiKey = () => {
 // Hook to get enabled models only
 export const useEnabledModels = () => {
   const availableModels = useChatStore((state) => state.availableModels);
+  const customModels = useChatStore((state) => state.customModels);
   const enabledModelIds = useChatStore((state) => state.enabledModelIds);
-  return availableModels.filter((model) => enabledModelIds.includes(model.id));
+  
+  const allModels = [...availableModels, ...customModels];
+  return allModels.filter((model) => enabledModelIds.includes(model.id));
 };
