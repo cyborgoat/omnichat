@@ -123,7 +123,7 @@ export default function MessageList({ messages }: MessageListProps) {
     );
   }
   return (
-    <div className="space-y-5 min-h-full">
+    <div className="space-y-5 min-h-full pb-12">
       <AnimatePresence initial={false}>
         {messages.map((item) => {
           if (item.type === "system_prompt_update") {
@@ -225,7 +225,7 @@ export default function MessageList({ messages }: MessageListProps) {
                                 rehypePlugins={[rehypeRaw]}
                                 components={{ code: CodeBlock }}
                               >
-                                {msg.thinkingSteps.join("").replace(/([.!?])\s*([A-Z])/g, "$1 $2").replace(/\s+/g, " ").trim()}
+                                {msg.thinkingSteps.join(" ").replace(/\s+/g, " ").trim()}
                               </ReactMarkdown>
                             </div>
                           </AccordionContent>

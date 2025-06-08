@@ -65,6 +65,11 @@ pub async fn handle_qwen_request(request: ChatRequest) -> Result<Pin<Box<dyn fut
         request_body["enable_thinking"] = json!(true);
     }
     
+    // Skip API call if API key is "None" to avoid errors
+    if request.api_key == "None" {
+        return Err(anyhow::anyhow!("API key is required but set to 'None'. Please set a valid API key."));
+    }
+
     let response = client
         .post("https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions")
         .header("Authorization", format!("Bearer {}", request.api_key))

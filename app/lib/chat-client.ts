@@ -15,11 +15,11 @@ declare global {
 
 // Main client-side chat handler
 export async function* handleChatClientSide(request: ChatRequest): AsyncGenerator<string> {
-  if (isTauriApp() && request.provider !== "Custom") {
-    // Use Tauri backend when running in desktop app (except for custom models)
+  if (isTauriApp()) {
+    // Always use Tauri backend when running in desktop app
     yield* handleTauriChat(request);
   } else {
-    // Use unified client-side handlers for web deployment or custom models
+    // Use unified client-side handlers for web deployment
     yield* handleUnifiedClientSide(request);
   }
 }

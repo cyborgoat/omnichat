@@ -77,6 +77,11 @@ pub async fn handle_google_request(request: ChatRequest) -> Result<Pin<Box<dyn f
         "generateContent"
     };
     
+    // Skip API call if API key is "None" to avoid errors
+    if request.api_key == "None" {
+        return Err(anyhow::anyhow!("API key is required but set to 'None'. Please set a valid API key."));
+    }
+
     let url = format!(
         "https://generativelanguage.googleapis.com/v1beta/models/{}:{}{}key={}",
         request.model_id,
@@ -160,6 +165,7 @@ fn parse_google_stream_chunk(text: &str) -> Result<StreamChunk> {
                                         // Note: As of early 2025, Google discontinued thinking content in API responses
                                         // Thinking still happens internally but is not exposed via the API
                                         // Only regular content is available
+                                        // Always yield content, even if empty, to ensure first chunk is sent
                                         content = Some(text.to_string());
                                     }
                                 }

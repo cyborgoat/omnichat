@@ -49,6 +49,7 @@ pub enum Provider {
     Deepseek,
     Qwen,
     Volces,
+    Custom,
 }
 
 impl std::str::FromStr for Provider {
@@ -62,6 +63,7 @@ impl std::str::FromStr for Provider {
             "Deepseek" => Ok(Provider::Deepseek),
             "Qwen" => Ok(Provider::Qwen),
             "Volces" => Ok(Provider::Volces),
+            "Custom" => Ok(Provider::Custom),
             _ => Err(anyhow::anyhow!("Unknown provider: {}", s)),
         }
     }

@@ -356,6 +356,9 @@ export default function ChatScreen() {
         provider: currentModel.provider,
         apiKey: apiKey || "",
         systemPrompt: currentSessionState.systemPrompt,
+        streamEnabled: store.modelSettings.streamEnabled,
+        temperature: store.modelSettings.temperature,
+        maxTokens: store.modelSettings.maxTokens,
       });
 
       let accumulatedResponse = "";
@@ -510,7 +513,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-background text-foreground overflow-hidden">
+    <div className="flex-1 flex flex-col bg-background text-foreground overflow-hidden pt-12">
       <div
         ref={scrollContainerRef}
         className="flex-grow overflow-y-auto no-scrollbar p-4 pb-6"

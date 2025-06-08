@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/table";
 import { useChatStore } from "@/app/store/chatStore";
 import { Eye, EyeOff } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -66,17 +66,46 @@ export function ApiKeysSettingsForm({ setIsDirty }: ApiKeysSettingsFormProps) {
     return () => subscription.unsubscribe();
   }, [apiKeyForm, setIsDirty]);
 
-  function onApiKeySubmit(data: ApiKeyFormValues) {
-    if (data.OpenAI !== undefined) setApiKey("OpenAI", data.OpenAI);
-    if (data.Google !== undefined) setApiKey("Google", data.Google);
-    if (data.Qwen !== undefined) setApiKey("Qwen", data.Qwen);
-    if (data.Deepseek !== undefined) setApiKey("Deepseek", data.Deepseek);
-    if (data.Anthropic !== undefined) setApiKey("Anthropic", data.Anthropic);
-    if (data.Volces !== undefined) setApiKey("Volces", data.Volces);
+  const onApiKeySubmit = useCallback((data: ApiKeyFormValues) => {
+    // Default empty API keys to "None" instead of empty string
+    if (data.OpenAI !== undefined) setApiKey("OpenAI", data.OpenAI || "None");
+    if (data.Google !== undefined) setApiKey("Google", data.Google || "None");
+    if (data.Qwen !== undefined) setApiKey("Qwen", data.Qwen || "None");
+    if (data.Deepseek !== undefined) setApiKey("Deepseek", data.Deepseek || "None");
+    if (data.Anthropic !== undefined) setApiKey("Anthropic", data.Anthropic || "None");
+    if (data.Volces !== undefined) setApiKey("Volces", data.Volces || "None");
     toast.success("API keys saved!");
     setIsDirty(false);
     apiKeyForm.reset(data);
-  }
+  }, [setApiKey, setIsDirty, apiKeyForm]);
+
+  const onCancel = useCallback(() => {
+    apiKeyForm.reset();
+    setIsDirty(false);
+  }, [apiKeyForm, setIsDirty]);
+
+  // Listen for save/cancel events from parent dialog
+  useEffect(() => {
+    const handleSaveEvent = (event: CustomEvent) => {
+      if (event.detail.tab === 'apiKeys') {
+        apiKeyForm.handleSubmit(onApiKeySubmit)();
+      }
+    };
+
+    const handleCancelEvent = (event: CustomEvent) => {
+      if (event.detail.tab === 'apiKeys') {
+        onCancel();
+      }
+    };
+
+    window.addEventListener('settings-save', handleSaveEvent as EventListener);
+    window.addEventListener('settings-cancel', handleCancelEvent as EventListener);
+
+    return () => {
+      window.removeEventListener('settings-save', handleSaveEvent as EventListener);
+      window.removeEventListener('settings-cancel', handleCancelEvent as EventListener);
+    };
+  }, [apiKeyForm, onApiKeySubmit, onCancel]);
 
   const toggleVisibility = (fieldName: keyof ApiKeyFormValues) => {
     setVisibleFields((prev) => ({ ...prev, [fieldName]: !prev[fieldName] }));
@@ -155,7 +184,6 @@ export function ApiKeysSettingsForm({ setIsDirty }: ApiKeysSettingsFormProps) {
             </TableBody>
           </Table>
         </ScrollArea>
-        <Button type="submit" className="text-xs mt-6" disabled={!apiKeyForm.formState.isDirty}>Save API Keys</Button>
       </form>
     </Form>
   );

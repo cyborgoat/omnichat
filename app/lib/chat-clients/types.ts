@@ -15,4 +15,7 @@ export interface ChatRequest {
     https?: string;
     socks5?: string;
   };
+  streamEnabled?: boolean;
+  temperature?: number;
+  maxTokens?: number;
 } 

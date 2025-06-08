@@ -63,6 +63,11 @@ pub async fn handle_deepseek_request(request: ChatRequest) -> Result<Pin<Box<dyn
         request_body["max_tokens"] = json!(request.max_tokens.unwrap_or(32768));
     }
     
+    // Skip API call if API key is "None" to avoid errors
+    if request.api_key == "None" {
+        return Err(anyhow::anyhow!("API key is required but set to 'None'. Please set a valid API key."));
+    }
+
     let response = client
         .post("https://api.deepseek.com/v1/chat/completions")
         .header("Authorization", format!("Bearer {}", request.api_key))

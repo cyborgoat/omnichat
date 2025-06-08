@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/accordion";
 import { useChatStore } from "@/app/store/chatStore";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Brain } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import CustomModelsForm from "./CustomModelsFormSimple";
@@ -66,7 +66,7 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
     setIsDirty(true);
   };
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     if (selectedModelIds.length === 0) {
       toast.error("Please select at least one model.");
       return;
@@ -74,9 +74,35 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
     setEnabledModels(selectedModelIds);
     toast.success("Model settings saved!");
     setIsDirty(false);
-  };
+  }, [selectedModelIds, setEnabledModels, setIsDirty]);
 
-  const hasChanges = JSON.stringify(selectedModelIds.sort()) !== JSON.stringify(enabledModelIds.sort());
+  const handleCancel = useCallback(() => {
+    setSelectedModelIds(enabledModelIds);
+    setIsDirty(false);
+  }, [enabledModelIds, setIsDirty]);
+
+  // Listen for save/cancel events from parent dialog
+  useEffect(() => {
+    const handleSaveEvent = (event: CustomEvent) => {
+      if (event.detail.tab === 'models') {
+        handleSave();
+      }
+    };
+
+    const handleCancelEvent = (event: CustomEvent) => {
+      if (event.detail.tab === 'models') {
+        handleCancel();
+      }
+    };
+
+    window.addEventListener('settings-save', handleSaveEvent as EventListener);
+    window.addEventListener('settings-cancel', handleCancelEvent as EventListener);
+
+    return () => {
+      window.removeEventListener('settings-save', handleSaveEvent as EventListener);
+      window.removeEventListener('settings-cancel', handleCancelEvent as EventListener);
+    };
+  }, [handleSave, handleCancel]);
 
   return (
     <div className="space-y-4 py-4">
@@ -190,18 +216,10 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
         })}
       </Accordion>
 
-      <div className="pt-2 flex justify-between items-center">
+      <div className="pt-2">
         <div className="text-xs text-muted-foreground">
           {selectedModelIds.length} of {allModels.length} models selected
         </div>
-        <Button 
-          onClick={handleSave} 
-          disabled={!hasChanges || selectedModelIds.length === 0}
-          className="text-xs"
-          size="sm"
-        >
-          Save Model Settings
-        </Button>
       </div>
           </TabsContent>
           

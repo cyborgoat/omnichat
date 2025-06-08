@@ -6,6 +6,7 @@ use crate::chat::providers::{
     deepseek::handle_deepseek_request,
     qwen::handle_qwen_request,
     volces::handle_volces_request,
+    custom::handle_custom_request,
 };
 use anyhow::Result;
 use futures_util::StreamExt;
@@ -29,6 +30,7 @@ pub async fn handle_chat_stream(
         Provider::Deepseek => handle_deepseek_request(request).await,
         Provider::Qwen => handle_qwen_request(request).await,
         Provider::Volces => handle_volces_request(request).await,
+        Provider::Custom => handle_custom_request(request).await,
     };
     
     match stream_result {

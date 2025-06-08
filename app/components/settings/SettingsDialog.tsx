@@ -37,6 +37,7 @@ export function SettingsDialog({ isMenuCollapsed, triggerButtonClassName }: Sett
   const [isDirty, setIsDirty] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [nextTab, setNextTab] = useState("");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   const handleTabChange = (value: string) => {
     if (isDirty) {
@@ -58,20 +59,36 @@ export function SettingsDialog({ isMenuCollapsed, triggerButtonClassName }: Sett
   const handleCancelNavigation = () => {
     setShowConfirmDialog(false);
   };
+
+  const handleSave = () => {
+    // Trigger save for the current active tab
+    const event = new CustomEvent('settings-save', { detail: { tab: activeTab } });
+    window.dispatchEvent(event);
+    setIsDirty(false);
+  };
+
+  const handleCancel = () => {
+    // Trigger cancel for the current active tab
+    const event = new CustomEvent('settings-cancel', { detail: { tab: activeTab } });
+    window.dispatchEvent(event);
+    setIsDirty(false);
+  };
+
+  const shouldShowSaveCancel = activeTab === "models" || activeTab === "apiKeys";
   
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button 
-          variant="ghost" 
-          className={triggerButtonClassName || defaultClassName}
-        >
-          <SettingsIcon size={20} className={`${!isMenuCollapsed ? 'mr-2' : ''}`} />
-          {!isMenuCollapsed && <span className="ml-1">Settings</span>}
-          <span className="sr-only">Open Settings</span>
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto sm:w-[600px]">
+      return (
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogTrigger asChild>
+          <Button 
+            variant="ghost" 
+            className={triggerButtonClassName || defaultClassName}
+          >
+            <SettingsIcon size={20} className={`${!isMenuCollapsed ? 'mr-2' : ''}`} />
+            {!isMenuCollapsed && <span className="ml-1">Settings</span>}
+            <span className="sr-only">Open Settings</span>
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto sm:w-[600px]">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
@@ -94,6 +111,27 @@ export function SettingsDialog({ isMenuCollapsed, triggerButtonClassName }: Sett
             <AdvancedSettingsForm setIsDirty={setIsDirty} />
           </TabsContent>
         </Tabs>
+        {shouldShowSaveCancel && (
+          <div className="flex gap-2 mt-6 pt-4 border-t">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={handleCancel} 
+              disabled={!isDirty}
+              className="text-xs"
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleSave} 
+              disabled={!isDirty}
+              className="text-xs"
+            >
+              Save Changes
+            </Button>
+          </div>
+        )}
         <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>

@@ -13,17 +13,20 @@ export async function* handleTauriChat(request: ChatRequest): AsyncGenerator<str
   });
 
   try {
+    // Default API key to "None" if empty
+    const apiKey = request.apiKey && request.apiKey.trim() !== "" ? request.apiKey : "None";
+    
     // Start the streaming request
     await invoke('handle_chat_stream', {
       request: {
         modelId: request.modelId,
         messages: request.messages,
-        apiKey: request.apiKey,
+        apiKey: apiKey,
         systemPrompt: request.systemPrompt,
         proxySettings: request.proxySettings,
-        streamEnabled: true,
-        temperature: 0.7,
-        maxTokens: 4096,
+        streamEnabled: request.streamEnabled ?? true,
+        temperature: request.temperature ?? 0.7,
+        maxTokens: request.maxTokens ?? 4096,
         provider: request.provider,
       },
       streamId,

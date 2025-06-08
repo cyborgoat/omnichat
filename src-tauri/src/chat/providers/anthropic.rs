@@ -46,6 +46,11 @@ pub async fn handle_anthropic_request(request: ChatRequest) -> Result<Pin<Box<dy
         }
     }
     
+    // Skip API call if API key is "None" to avoid errors
+    if request.api_key == "None" {
+        return Err(anyhow::anyhow!("API key is required but set to 'None'. Please set a valid API key."));
+    }
+
     let response = client
         .post("https://api.anthropic.com/v1/messages")
         .header("x-api-key", &request.api_key)
@@ -129,10 +134,8 @@ fn parse_anthropic_stream_chunk(text: &str) -> Result<StreamChunk> {
                             if let Some(content_block) = parsed.get("content_block") {
                                 if content_block["type"] == "text" {
                                     if let Some(text) = content_block["text"].as_str() {
-                                        // Only yield if there's actually text content (not empty)
-                                        if !text.trim().is_empty() {
-                                            content = Some(text.to_string());
-                                        }
+                                        // Always yield the initial text content, even if empty
+                                        content = Some(text.to_string());
                                     }
                                 }
                             }

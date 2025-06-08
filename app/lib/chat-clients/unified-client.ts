@@ -47,16 +47,17 @@ export async function* handleUnifiedClientSide(
         throw new Error(`Unsupported provider: ${model.provider}`);
     }
 
-    // Ensure we have a valid API key
-    if (!request.apiKey || request.apiKey.trim() === "") {
-      throw new Error(`${model.provider} API key is required but not provided`);
+    // Default to "None" if API key is empty to avoid errors
+    let apiKey = request.apiKey;
+    if (!apiKey || apiKey.trim() === "") {
+      apiKey = "None";
     }
 
     // Prepare the request body for our API route
     const requestBody: Record<string, unknown> = {
       modelId: request.modelId,
       messages: request.messages,
-      apiKey: request.apiKey.trim(),
+      apiKey: apiKey.trim(),
       proxySettings,
       streamEnabled: modelSettings.streamEnabled,
       temperature: modelSettings.temperature,
