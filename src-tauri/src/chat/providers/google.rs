@@ -9,6 +9,17 @@ use std::pin::Pin;
 pub async fn handle_google_request(request: ChatRequest) -> Result<Pin<Box<dyn futures_util::Stream<Item = Result<StreamChunk>> + Send>>> {
     let client = create_client(&request.proxy_settings)?;
     
+    // Google reasoning models that use reasoning_content field (similar to DeepSeek)
+    let google_reasoning_models = vec![
+        "gemini-2.5",
+        "gemini-2.0-flash-thinking",
+        "thinking"
+    ];
+    
+    let is_reasoning_model = google_reasoning_models.iter().any(|&model| {
+        request.model_id.contains(model) || request.model_id == model
+    });
+    
     // Filter and format messages for Gemini API
     let mut gemini_messages = Vec::new();
     
@@ -53,12 +64,16 @@ pub async fn handle_google_request(request: ChatRequest) -> Result<Pin<Box<dyn f
             "temperature": request.temperature.unwrap_or(0.7),
             "topK": 40,
             "topP": 0.95,
-            "maxOutputTokens": request.max_tokens.unwrap_or(4096),
-            "thinkingConfig": {
-                "includeThoughts": true
-            }
+            "maxOutputTokens": request.max_tokens.unwrap_or(4096)
         }
     });
+    
+    // Add thinking configuration only for reasoning-capable models
+    if is_reasoning_model {
+        payload["generationConfig"]["thinkingConfig"] = json!({
+            "includeThoughts": true
+        });
+    }
     
     // Add system instruction if provided
     if let Some(system_prompt) = &request.system_prompt {
@@ -102,12 +117,16 @@ pub async fn handle_google_request(request: ChatRequest) -> Result<Pin<Box<dyn f
         return Err(anyhow::anyhow!("API request failed: {}", error_text));
     }
     
-    // Handle streaming response
+    // Handle streaming response with proper buffer management
+    let mut accumulated_text = String::new();
     let stream = response.bytes_stream().map(move |chunk_result| {
         match chunk_result {
             Ok(bytes) => {
-                let text = String::from_utf8_lossy(&bytes);
-                parse_google_stream_chunk(&text)
+                let new_text = String::from_utf8_lossy(&bytes);
+                accumulated_text.push_str(&new_text);
+                
+                // Process any complete lines (ending with \n)
+                parse_accumulated_text(&mut accumulated_text, is_reasoning_model)
             }
             Err(e) => Ok(StreamChunk {
                 content: None,
@@ -138,57 +157,94 @@ fn create_client(proxy_settings: &Option<ProxySettings>) -> Result<Client> {
     Ok(client_builder.build()?)
 }
 
-fn parse_google_stream_chunk(text: &str) -> Result<StreamChunk> {
-    let mut content = None;
-    let thinking_content = None;
+fn parse_accumulated_text(text: &mut String, is_reasoning_model: bool) -> Result<StreamChunk> {
+    let mut content_parts = Vec::new();
+    let mut thinking_parts = Vec::new();
     let mut done = false;
     let mut error = None;
     
-    // Parse SSE format
-    for line in text.lines() {
-        if line.starts_with("data: ") {
-            let data_content = line[6..].trim();
+    // Find all complete lines (ending with \n) and process them
+    let mut processed_chars = 0;
+    let lines: Vec<&str> = text.lines().collect();
+    
+    for (i, line) in lines.iter().enumerate() {
+        let line = line.trim();
+        
+        // Check if this line is complete (has a newline after it in the original text)
+        let line_start = if i == 0 { 0 } else { 
+            lines[..i].iter().map(|l| l.len() + 1).sum::<usize>()
+        };
+        let line_end = line_start + line.len();
+        
+        // Only process if there's a newline after this line (making it complete)
+        if line_end < text.len() && text.chars().nth(line_end) == Some('\n') {
+            processed_chars = line_end + 1; // +1 for the newline
             
-            if data_content == "[DONE]" {
-                done = true;
-                break;
-            }
-            
-            if let Ok(parsed) = serde_json::from_str::<Value>(data_content) {
-                // Handle Gemini response format
-                if let Some(candidates) = parsed["candidates"].as_array() {
-                    if let Some(candidate) = candidates.get(0) {
-                        if let Some(content_obj) = candidate.get("content") {
-                            if let Some(parts) = content_obj["parts"].as_array() {
-                                for part in parts {
-                                    if let Some(text) = part["text"].as_str() {
-                                        // Note: As of early 2025, Google discontinued thinking content in API responses
-                                        // Thinking still happens internally but is not exposed via the API
-                                        // Only regular content is available
-                                        // Always yield content, even if empty, to ensure first chunk is sent
-                                        content = Some(text.to_string());
+            if line.starts_with("data: ") {
+                let data_content = line[6..].trim();
+                
+                if data_content == "[DONE]" {
+                    done = true;
+                    break;
+                }
+                
+                // Parse JSON
+                if let Ok(parsed) = serde_json::from_str::<Value>(data_content) {
+                    if let Some(choices) = parsed["choices"].as_array() {
+                        if let Some(choice) = choices.get(0) {
+                            if let Some(delta) = choice.get("delta") {
+                                // Handle reasoning content for reasoning models
+                                if is_reasoning_model {
+                                    if let Some(reasoning_text) = delta["reasoning_content"].as_str() {
+                                        thinking_parts.push(reasoning_text.to_string());
                                     }
+                                }
+                                
+                                // Handle regular content - collect ALL content, including empty strings
+                                if let Some(content_text) = delta["content"].as_str() {
+                                    content_parts.push(content_text.to_string());
+                                }
+                            }
+                            
+                            // Check finish reason
+                            if let Some(finish_reason) = choice["finish_reason"].as_str() {
+                                if finish_reason == "stop" || finish_reason == "length" {
+                                    done = true;
                                 }
                             }
                         }
-                        
-                        // Check for finish reason to mark completion
-                        if let Some(finish_reason) = candidate["finishReason"].as_str() {
-                            if finish_reason == "STOP" {
-                                done = true;
-                            }
-                        }
                     }
-                }
-                
-                // Handle errors
-                if let Some(error_obj) = parsed.get("error") {
-                    error = Some(error_obj["message"].as_str().unwrap_or("API Error").to_string());
-                    done = true;
+                    
+                    // Handle errors
+                    if let Some(error_obj) = parsed.get("error") {
+                        if let Some(error_message) = error_obj["message"].as_str() {
+                            error = Some(error_message.to_string());
+                        }
+                        done = true;
+                        break;
+                    }
                 }
             }
         }
     }
+    
+    // Remove only the processed complete lines from buffer
+    if processed_chars > 0 {
+        text.drain(0..processed_chars);
+    }
+    
+    // Combine all content parts - return content if we have any parts (including empty ones during streaming)
+    let content = if content_parts.is_empty() {
+        None
+    } else {
+        Some(content_parts.join(""))
+    };
+
+    let thinking_content = if thinking_parts.is_empty() {
+        None 
+    } else {
+        Some(thinking_parts.join(""))
+    };
     
     Ok(StreamChunk {
         content,

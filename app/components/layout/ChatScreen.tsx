@@ -361,105 +361,35 @@ export default function ChatScreen() {
         maxTokens: store.modelSettings.maxTokens,
       });
 
-      let accumulatedResponse = "";
-
+      // Process chunks - now using structured data instead of string manipulation
       for await (const chunk of chatStream) {
-        accumulatedResponse += chunk;
-
-        // Process thinking content markers
-        while (
-          accumulatedResponse.includes("__THINKING_START__") &&
-          accumulatedResponse.includes("__THINKING_END__")
-        ) {
-          const startIndex = accumulatedResponse.indexOf("__THINKING_START__");
-          const endIndex =
-            accumulatedResponse.indexOf("__THINKING_END__") +
-            "__THINKING_END__".length;
-
-          // Add content before thinking marker to message
-          if (startIndex > 0) {
-            const beforeThinking = accumulatedResponse.substring(0, startIndex);
-            store.appendMessageContent(
-              currentSessionState.id,
-              botMessageId,
-              beforeThinking
-            );
-          }
-
-          // Extract thinking content
-          const thinkingContent = accumulatedResponse.substring(
-            startIndex + "__THINKING_START__".length,
-            endIndex - "__THINKING_END__".length
-          );
-
-          if (thinkingContent.trim()) {
+        if (!chunk) continue;
+        
+        try {
+          // Parse structured chunk data
+          const chunkData = JSON.parse(chunk);
+          
+          if (chunkData.type === 'thinking' && chunkData.content) {
+            // Add thinking content directly
             store.addThinkingStep(
               currentSessionState.id,
               botMessageId,
-              thinkingContent.trim()
+              chunkData.content
             );
-          }
-
-          // Remove processed content from buffer
-          accumulatedResponse = accumulatedResponse.substring(endIndex);
-        }
-
-        // If no more thinking markers, add remaining content to message
-        if (!accumulatedResponse.includes("__THINKING_START__")) {
-          if (accumulatedResponse) {
+          } else if (chunkData.type === 'content' && chunkData.content !== undefined) {
+            // Add regular content directly (including empty strings for first chunks)
             store.appendMessageContent(
               currentSessionState.id,
               botMessageId,
-              accumulatedResponse
-            );
-            accumulatedResponse = "";
-          }
-        }
-      }
-
-      // Process any remaining content in buffer
-      if (accumulatedResponse) {
-        // Handle any final thinking content
-        while (
-          accumulatedResponse.includes("__THINKING_START__") &&
-          accumulatedResponse.includes("__THINKING_END__")
-        ) {
-          const startIndex = accumulatedResponse.indexOf("__THINKING_START__");
-          const endIndex =
-            accumulatedResponse.indexOf("__THINKING_END__") +
-            "__THINKING_END__".length;
-
-          if (startIndex > 0) {
-            const beforeThinking = accumulatedResponse.substring(0, startIndex);
-            store.appendMessageContent(
-              currentSessionState.id,
-              botMessageId,
-              beforeThinking
+              chunkData.content
             );
           }
-
-          const thinkingContent = accumulatedResponse.substring(
-            startIndex + "__THINKING_START__".length,
-            endIndex - "__THINKING_END__".length
-          );
-
-          if (thinkingContent.trim()) {
-            store.addThinkingStep(
-              currentSessionState.id,
-              botMessageId,
-              thinkingContent.trim()
-            );
-          }
-
-          accumulatedResponse = accumulatedResponse.substring(endIndex);
-        }
-
-        // Add any remaining content
-        if (accumulatedResponse) {
+        } catch {
+          // Fallback: treat as plain text content if not JSON
           store.appendMessageContent(
             currentSessionState.id,
             botMessageId,
-            accumulatedResponse
+            chunk
           );
         }
       }

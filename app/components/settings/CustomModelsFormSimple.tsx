@@ -6,18 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-    DialogFooter,
-} from "@/components/ui/dialog";
-import { Separator } from "@/components/ui/separator";
 import { useChatStore, Model, CustomModelConfig } from "@/app/store/chatStore";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, Brain, ExternalLink, Server } from "lucide-react";
+import { Plus, Edit, Trash2, Brain, ExternalLink, Server, X, Check, AlertTriangle } from "lucide-react";
 
 interface CustomModelsFormProps {
     setIsDirty: (isDirty: boolean) => void;
@@ -31,7 +22,7 @@ export function CustomModelsForm({ setIsDirty }: CustomModelsFormProps) {
         deleteCustomModel,
         setApiKey,
     } = useChatStore();
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingModel, setEditingModel] = useState<Model | null>(null);
 
     // Form state
@@ -77,7 +68,6 @@ export function CustomModelsForm({ setIsDirty }: CustomModelsFormProps) {
                 }
             }
 
-            // Clean the API endpoint - remove /v1/chat/completions if present
             const cleanApiEndpoint = formData.apiEndpoint.replace(/\/v1\/chat\/completions\/?$/, '');
 
             const customConfig: CustomModelConfig = {
@@ -92,9 +82,6 @@ export function CustomModelsForm({ setIsDirty }: CustomModelsFormProps) {
                 headers,
             };
 
-            // Create a model ID that includes endpoint information for the backend
-            // Format: "endpoint||model_name"
-            // Always create the new format, even when editing
             const modelId = `${cleanApiEndpoint}||${formData.modelName}`;
 
             const modelData: Model = {
@@ -109,14 +96,15 @@ export function CustomModelsForm({ setIsDirty }: CustomModelsFormProps) {
 
             if (editingModel) {
                 updateCustomModel(editingModel.id, modelData);
+                toast.success("Custom model updated");
             } else {
                 addCustomModel(modelData);
+                toast.success("Custom model added");
             }
 
-            // Save API key if provided, default to "None" if empty
             setApiKey("Custom", formData.apiKey && formData.apiKey.trim() ? formData.apiKey : "None");
 
-            setIsDialogOpen(false);
+            setIsFormOpen(false);
             setEditingModel(null);
             resetForm();
             setIsDirty(true);
@@ -144,12 +132,19 @@ export function CustomModelsForm({ setIsDirty }: CustomModelsFormProps) {
                 : "",
             apiKey: "",
         });
-        setIsDialogOpen(true);
+        setIsFormOpen(true);
     };
 
     const handleDelete = (modelId: string) => {
         deleteCustomModel(modelId);
         setIsDirty(true);
+        toast.success("Custom model deleted");
+    };
+
+    const handleCancel = () => {
+        setIsFormOpen(false);
+        setEditingModel(null);
+        resetForm();
     };
 
     const handleTestConnection = async (model: Model) => {
@@ -157,8 +152,7 @@ export function CustomModelsForm({ setIsDirty }: CustomModelsFormProps) {
 
         try {
             const response = await fetch(
-                model.customConfig.apiEndpoint.replace(/\/$/, "") +
-                    "/v1/models",
+                model.customConfig.apiEndpoint.replace(/\/$/, "") + "/v1/models",
                 {
                     method: "GET",
                     headers: {
@@ -171,391 +165,229 @@ export function CustomModelsForm({ setIsDirty }: CustomModelsFormProps) {
             if (response.ok) {
                 toast.success(`Connection to ${model.name} successful!`);
             } else {
-                toast.error(
-                    `Connection failed: ${response.status} ${response.statusText}`
-                );
+                toast.error(`Connection failed: ${response.status} ${response.statusText}`);
             }
         } catch (error) {
-            toast.error(
-                `Connection failed: ${
-                    error instanceof Error ? error.message : "Unknown error"
-                }`
-            );
+            toast.error(`Connection failed: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
     };
 
     return (
-        <div className="space-y-4 py-4">
+        <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <div>
-                    <h3 className="text-md font-medium">Custom Models</h3>
-                    <p className="text-xs text-muted-foreground mt-1">
-                        Add your own OpenAI-compatible API endpoints (vLLM,
-                        Ollama, etc.)
+                    <h4 className="text-sm font-medium">Custom Models</h4>
+                    <p className="text-xs text-muted-foreground">
+                        Add OpenAI-compatible endpoints (vLLM, Ollama, etc.)
                     </p>
                 </div>
-                <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogTrigger asChild>
+                {!isFormOpen && (
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                            setEditingModel(null);
+                            resetForm();
+                            setIsFormOpen(true);
+                        }}
+                    >
+                        <Plus size={16} className="mr-1" />
+                        Add Model
+                    </Button>
+                )}
+            </div>
+
+            {isFormOpen && (
+                <div className="rounded-lg border bg-card p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                        <h5 className="text-sm font-medium">
+                            {editingModel ? "Edit Custom Model" : "Add Custom Model"}
+                        </h5>
                         <Button
-                            variant="outline"
+                            variant="ghost"
                             size="sm"
-                            onClick={() => {
-                                setEditingModel(null);
-                                resetForm();
-                            }}
+                            onClick={handleCancel}
+                            className="h-8 w-8 p-0"
                         >
-                            <Plus size={16} className="mr-1" />
-                            Add Model
+                            <X size={16} />
                         </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                            <DialogTitle>
-                                {editingModel
-                                    ? "Edit Custom Model"
-                                    : "Add Custom Model"}
-                            </DialogTitle>
-                        </DialogHeader>
-                        <form onSubmit={onSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <Label htmlFor="name" className="pb-2">
-                                        Display Name
-                                    </Label>
-                                    <Input
-                                        id="name"
-                                        value={formData.name}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                name: e.target.value,
-                                            })
-                                        }
-                                        placeholder="My Custom Model"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <Label htmlFor="modelName" className="pb-2">
-                                        Model Name (API)
-                                    </Label>
-                                    <Input
-                                        id="modelName"
-                                        value={formData.modelName}
-                                        onChange={(e) =>
-                                            setFormData({
-                                                ...formData,
-                                                modelName: e.target.value,
-                                            })
-                                        }
-                                        placeholder="Example: Qwen/Qwen3-1.7B"
-                                        required
-                                    />
-                                    <p className="text-xs text-muted-foreground mt-1">
-                                        Model name to send in API requests
+                    </div>
+                    
+                    <form onSubmit={onSubmit} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <Label htmlFor="name" className="text-xs">Display Name</Label>
+                                <Input
+                                    id="name"
+                                    value={formData.name}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, name: e.target.value })
+                                    }
+                                    placeholder="My Custom Model"
+                                    required
+                                    className="mt-1"
+                                />
+                            </div>
+                            <div>
+                                <Label htmlFor="modelName" className="text-xs">Model Name</Label>
+                                <Input
+                                    id="modelName"
+                                    value={formData.modelName}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, modelName: e.target.value })
+                                    }
+                                    placeholder="model-name"
+                                    required
+                                    className="mt-1"
+                                />
+                                <div className="flex items-start gap-1 mt-1">
+                                    <AlertTriangle size={12} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                                    <p className="text-xs text-amber-600 dark:text-amber-400">
+                                        Must match exactly with the API endpoint's model name
                                     </p>
                                 </div>
                             </div>
+                        </div>
 
-                            <div>
-                                <Label htmlFor="apiEndpoint" className="pb-2">
-                                    API Endpoint URL
-                                </Label>
-                                <Input
-                                    id="apiEndpoint"
-                                    value={formData.apiEndpoint}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            apiEndpoint: e.target.value,
-                                        })
-                                    }
-                                    placeholder="http://localhost:8000/v1/chat/completions"
-                                    required
-                                />
-                            </div>
-
-                            <div>
-                                <Label htmlFor="apiKey" className="pb-2">
-                                    API Key (Optional)
-                                </Label>
-                                <Input
-                                    id="apiKey"
-                                    type="password"
-                                    value={formData.apiKey}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            apiKey: e.target.value,
-                                        })
-                                    }
-                                    placeholder="Enter API key if required"
-                                />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Leave empty if the endpoint doesn&apos;t
-                                    require authentication
-                                </p>
-                            </div>
-
-                            <Separator />
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-4">
-                                    <div className="flex items-center space-x-2">
-                                        <Switch
-                                            id="supportsReasoning"
-                                            checked={formData.supportsReasoning}
-                                            onCheckedChange={(checked) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    supportsReasoning: checked,
-                                                })
-                                            }
-                                        />
-                                        <div>
-                                            <Label htmlFor="supportsReasoning">
-                                                Supports Reasoning/Thinking
-                                            </Label>
-                                            <p className="text-xs text-muted-foreground">
-                                                Model can show thinking process
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center space-x-2">
-                                        <Switch
-                                            id="supportsStreaming"
-                                            checked={formData.supportsStreaming}
-                                            onCheckedChange={(checked) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    supportsStreaming: checked,
-                                                })
-                                            }
-                                        />
-                                        <div>
-                                            <Label htmlFor="supportsStreaming">
-                                                Supports Streaming
-                                            </Label>
-                                            <p className="text-xs text-muted-foreground">
-                                                Real-time response streaming
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {formData.supportsReasoning && (
-                                        <div>
-                                            <Label htmlFor="thinkingParameterName">
-                                                Thinking Parameter Name
-                                            </Label>
-                                            <Input
-                                                id="thinkingParameterName"
-                                                value={
-                                                    formData.thinkingParameterName
-                                                }
-                                                onChange={(e) =>
-                                                    setFormData({
-                                                        ...formData,
-                                                        thinkingParameterName:
-                                                            e.target.value,
-                                                    })
-                                                }
-                                                placeholder="enable_thinking"
-                                                className="text-xs"
-                                            />
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                Parameter name for enabling
-                                                thinking (default:
-                                                enable_thinking)
-                                            </p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <Label htmlFor="defaultTemperature" className="pb-2">
-                                            Default Temperature
-                                        </Label>
-                                        <Input
-                                            id="defaultTemperature"
-                                            type="number"
-                                            step="0.1"
-                                            min="0"
-                                            max="2"
-                                            value={formData.defaultTemperature}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    defaultTemperature:
-                                                        parseFloat(
-                                                            e.target.value
-                                                        ),
-                                                })
-                                            }
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <Label htmlFor="defaultMaxTokens" className="pb-2">
-                                            Default Max Tokens
-                                        </Label>
-                                        <Input
-                                            id="defaultMaxTokens"
-                                            type="number"
-                                            min="1"
-                                            value={formData.defaultMaxTokens}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    defaultMaxTokens: parseInt(
-                                                        e.target.value
-                                                    ),
-                                                })
-                                            }
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <Label htmlFor="headers" className="pb-2">
-                                    Additional Headers (JSON)
-                                </Label>
-                                <Textarea
-                                    id="headers"
-                                    value={formData.headers}
-                                    onChange={(e) =>
-                                        setFormData({
-                                            ...formData,
-                                            headers: e.target.value,
-                                        })
-                                    }
-                                    placeholder='{"Authorization": "Bearer token", "Custom-Header": "value"}'
-                                    className="min-h-[80px]"
-                                />
-                                <p className="text-xs text-muted-foreground mt-1">
-                                    Optional additional headers as JSON object
-                                </p>
-                            </div>
-
-                            <DialogFooter>
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => setIsDialogOpen(false)}
-                                >
-                                    Cancel
-                                </Button>
-                                <Button type="submit">
-                                    {editingModel
-                                        ? "Update Model"
-                                        : "Add Model"}
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </DialogContent>
-                </Dialog>
-            </div>
-
-            {customModels.length === 0 ? (
-                <div className="rounded-lg border bg-card text-card-foreground shadow-sm">
-                    <div className="p-6 pt-6">
-                        <div className="text-center text-muted-foreground">
-                            <Server
-                                size={48}
-                                className="mx-auto mb-4 opacity-50"
+                        <div>
+                            <Label htmlFor="apiEndpoint" className="text-xs">API Endpoint</Label>
+                            <Input
+                                id="apiEndpoint"
+                                value={formData.apiEndpoint}
+                                onChange={(e) =>
+                                    setFormData({ ...formData, apiEndpoint: e.target.value })
+                                }
+                                placeholder="http://localhost:8000"
+                                required
+                                className="mt-1"
                             />
-                            <p className="text-sm">
-                                No custom models configured yet.
-                            </p>
-                            <p className="text-xs mt-1">
-                                Add your first OpenAI-compatible endpoint to get
-                                started!
+                        </div>
+
+                        <div>
+                            <Label htmlFor="apiKey" className="text-xs">API Key (optional)</Label>
+                            <Input
+                                id="apiKey"
+                                type="password"
+                                value={formData.apiKey}
+                                onChange={(e) =>
+                                    setFormData({ ...formData, apiKey: e.target.value })
+                                }
+                                placeholder="optional api key"
+                                className="mt-1"
+                            />
+                        </div>
+
+                        <div>
+                            <Label htmlFor="headers" className="text-xs">Additional Headers (JSON)</Label>
+                            <Textarea
+                                id="headers"
+                                value={formData.headers}
+                                onChange={(e) =>
+                                    setFormData({ ...formData, headers: e.target.value })
+                                }
+                                placeholder='{"Authorization": "Bearer token"}'
+                                className="mt-1 min-h-[60px]"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                                Optional headers as JSON object
                             </p>
                         </div>
-                    </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center space-x-2">
+                                <Switch
+                                    id="supportsReasoning"
+                                    checked={formData.supportsReasoning}
+                                    onCheckedChange={(checked) =>
+                                        setFormData({ ...formData, supportsReasoning: checked })
+                                    }
+                                />
+                                <Label htmlFor="supportsReasoning" className="text-xs">
+                                    Reasoning
+                                </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Switch
+                                    id="supportsStreaming"
+                                    checked={formData.supportsStreaming}
+                                    onCheckedChange={(checked) =>
+                                        setFormData({ ...formData, supportsStreaming: checked })
+                                    }
+                                />
+                                <Label htmlFor="supportsStreaming" className="text-xs">
+                                    Streaming
+                                </Label>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end space-x-2 pt-2">
+                            <Button type="button" variant="outline" size="sm" onClick={handleCancel}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" size="sm">
+                                <Check size={16} className="mr-1" />
+                                {editingModel ? "Update" : "Add"}
+                            </Button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {customModels.length === 0 && !isFormOpen ? (
+                <div className="rounded-lg border bg-muted/20 p-6 text-center">
+                    <Server size={32} className="mx-auto mb-3 opacity-40" />
+                    <p className="text-sm text-muted-foreground">No custom models yet</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                        Add your first endpoint to get started
+                    </p>
                 </div>
             ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                     {customModels.map((model) => (
                         <div
                             key={model.id}
-                            className="rounded-lg border bg-card text-card-foreground shadow-sm relative"
+                            className="rounded-lg border bg-card p-3 flex items-center justify-between"
                         >
-                            <div className="flex flex-col space-y-1.5 p-6 pb-2">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2">
-                                        <h3 className="text-sm font-medium">
-                                            {model.name}
-                                            {model.hasReasoning && (
-                                                <Brain
-                                                    size={16}
-                                                    className="inline ml-1 text-slate-600 dark:text-slate-400"
-                                                />
-                                            )}
-                                        </h3>
-                                        <span className="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80">
-                                            Custom
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                                handleTestConnection(model)
-                                            }
-                                            className="h-7 w-7 p-0"
-                                        >
-                                            <ExternalLink size={14} />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => handleEdit(model)}
-                                            className="h-7 w-7 p-0"
-                                        >
-                                            <Edit size={14} />
-                                        </Button>
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() =>
-                                                handleDelete(model.id)
-                                            }
-                                            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                                        >
-                                            <Trash2 size={14} />
-                                        </Button>
-                                    </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <h6 className="text-sm font-medium truncate">
+                                        {model.name}
+                                    </h6>
+                                    {model.hasReasoning && (
+                                        <Brain size={14} className="text-muted-foreground flex-shrink-0" />
+                                    )}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                                    <p className="truncate">
+                                        {model.customConfig?.apiEndpoint} • {model.customConfig?.modelName}
+                                    </p>
                                 </div>
                             </div>
-                            <div className="p-6 pt-0">
-                                <div className="text-xs text-muted-foreground space-y-1">
-                                    <p>
-                                        <strong>Endpoint:</strong>{" "}
-                                        {model.customConfig?.apiEndpoint}
-                                    </p>
-                                    <p>
-                                        <strong>Model:</strong>{" "}
-                                        {model.customConfig?.modelName}
-                                    </p>
-                                    <div className="flex gap-2 mt-2">
-                                        {model.customConfig
-                                            ?.supportsStreaming && (
-                                            <span className="text-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                                                Streaming
-                                            </span>
-                                        )}
-                                        {model.customConfig
-                                            ?.supportsThinking && (
-                                            <span className="text-foreground inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                                                Thinking
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
+                            <div className="flex items-center gap-1 ml-2">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleTestConnection(model)}
+                                    className="h-7 w-7 p-0"
+                                >
+                                    <ExternalLink size={12} />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleEdit(model)}
+                                    className="h-7 w-7 p-0"
+                                >
+                                    <Edit size={12} />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDelete(model.id)}
+                                    className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                                >
+                                    <Trash2 size={12} />
+                                </Button>
                             </div>
                         </div>
                     ))}

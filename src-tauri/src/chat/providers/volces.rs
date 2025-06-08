@@ -9,8 +9,8 @@ use std::pin::Pin;
 pub async fn handle_volces_request(request: ChatRequest) -> Result<Pin<Box<dyn futures_util::Stream<Item = Result<StreamChunk>> + Send>>> {
     let client = create_client(&request.proxy_settings)?;
     
-    // Volcengine thinking models that support reasoning_content (per Volcengine docs)
-    let volces_thinking_models = vec![
+    // Volcengine reasoning models that support reasoning_content (per Volcengine docs)
+    let volces_reasoning_models = vec![
         "deepseek-r1",
         "deepseek-r1-0528", 
         "doubao-1.5-thinking-pro",
@@ -19,7 +19,7 @@ pub async fn handle_volces_request(request: ChatRequest) -> Result<Pin<Box<dyn f
         "doubao-thinking-vision-pro"
     ];
     
-    let is_volces_thinking_model = volces_thinking_models.iter().any(|&model| {
+    let is_reasoning_model = volces_reasoning_models.iter().any(|&model| {
         request.model_id.contains(model) || request.model_id == model
     });
     
@@ -51,7 +51,7 @@ pub async fn handle_volces_request(request: ChatRequest) -> Result<Pin<Box<dyn f
     }
     
     // Use different request formats based on model type
-    let request_body = if is_volces_thinking_model {
+    let request_body = if is_reasoning_model {
         // For thinking models, use OpenAI-compatible format
         json!({
             "model": request.model_id,
@@ -91,12 +91,16 @@ pub async fn handle_volces_request(request: ChatRequest) -> Result<Pin<Box<dyn f
         return Err(anyhow::anyhow!("API request failed: {}", error_text));
     }
 
-    // Handle streaming response
+    // Simple streaming - accumulate text and process complete lines
+    let mut accumulated_text = String::new();
     let stream = response.bytes_stream().map(move |chunk_result| {
         match chunk_result {
             Ok(bytes) => {
-                let text = String::from_utf8_lossy(&bytes);
-                parse_volces_stream_chunk(&text, is_volces_thinking_model)
+                let new_text = String::from_utf8_lossy(&bytes);
+                accumulated_text.push_str(&new_text);
+                
+                // Process any complete lines (ending with \n)
+                parse_accumulated_text(&mut accumulated_text, is_reasoning_model)
             }
             Err(e) => Ok(StreamChunk {
                 content: None,
@@ -127,89 +131,94 @@ fn create_client(proxy_settings: &Option<ProxySettings>) -> Result<Client> {
     Ok(client_builder.build()?)
 }
 
-fn parse_volces_stream_chunk(text: &str, is_thinking_model: bool) -> Result<StreamChunk> {
-    let mut content = None;
-    let mut thinking_content = None;
+fn parse_accumulated_text(text: &mut String, is_reasoning_model: bool) -> Result<StreamChunk> {
+    let mut content_parts = Vec::new();
+    let mut thinking_parts = Vec::new();
     let mut done = false;
     let mut error = None;
     
-    // Parse SSE format properly - split by lines and process each SSE event
+    // Find all complete lines (ending with \n) and process them
+    let mut processed_chars = 0;
     let lines: Vec<&str> = text.lines().collect();
-    let mut i = 0;
     
-    while i < lines.len() {
-        let line = lines[i].trim();
+    for (i, line) in lines.iter().enumerate() {
+        let line = line.trim();
         
-        // Skip empty lines
-        if line.is_empty() {
-            i += 1;
-            continue;
-        }
+        // Check if this line is complete (has a newline after it in the original text)
+        let line_start = if i == 0 { 0 } else { 
+            lines[..i].iter().map(|l| l.len() + 1).sum::<usize>()
+        };
+        let line_end = line_start + line.len();
         
-        // Parse SSE data lines
-        if line.starts_with("data: ") {
-            let data_content = line[6..].trim();
+        // Only process if there's a newline after this line (making it complete)
+        if line_end < text.len() && text.chars().nth(line_end) == Some('\n') {
+            processed_chars = line_end + 1; // +1 for the newline
             
-            if data_content == "[DONE]" {
-                done = true;
-                break;
-            }
-            
-            if let Ok(parsed) = serde_json::from_str::<Value>(data_content) {
-                // Handle OpenAI-compatible format for thinking models
-                if let Some(choices) = parsed["choices"].as_array() {
-                    if let Some(choice) = choices.get(0) {
-                        // Handle streaming delta content
-                        if let Some(delta) = choice.get("delta") {
-                            // Handle reasoning content for Volcengine thinking models
-                            if is_thinking_model {
-                                if let Some(reasoning_content_val) = delta.get("reasoning_content") {
-                                    if let Some(reasoning_text) = reasoning_content_val.as_str() {
-                                        if !reasoning_text.trim().is_empty() {
-                                            thinking_content = Some(reasoning_text.to_string());
-                                        }
+            if line.starts_with("data: ") {
+                let data_content = line[6..].trim();
+                
+                if data_content == "[DONE]" {
+                    done = true;
+                    break;
+                }
+                
+                // Parse JSON
+                if let Ok(parsed) = serde_json::from_str::<Value>(data_content) {
+                    if let Some(choices) = parsed["choices"].as_array() {
+                        if let Some(choice) = choices.get(0) {
+                            if let Some(delta) = choice.get("delta") {
+                                // Handle reasoning content for reasoning models
+                                if is_reasoning_model {
+                                    if let Some(reasoning_text) = delta["reasoning_content"].as_str() {
+                                        thinking_parts.push(reasoning_text.to_string());
                                     }
+                                }
+                                
+                                // Handle regular content - collect ALL content, including empty strings
+                                if let Some(content_text) = delta["content"].as_str() {
+                                    content_parts.push(content_text.to_string());
                                 }
                             }
                             
-                            // Handle regular content
-                            if let Some(content_val) = delta.get("content") {
-                                if let Some(content_text) = content_val.as_str() {
-                                    if !content_text.trim().is_empty() {
-                                        content = Some(content_text.to_string());
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Check for finish reason
-                        if let Some(finish_reason) = choice.get("finish_reason") {
-                            if let Some(finish_reason_str) = finish_reason.as_str() {
-                                if finish_reason_str == "stop" || finish_reason_str == "length" {
+                            // Check finish reason
+                            if let Some(finish_reason) = choice["finish_reason"].as_str() {
+                                if finish_reason == "stop" || finish_reason == "length" {
                                     done = true;
                                 }
                             }
                         }
                     }
-                }
-                
-                // Handle errors
-                if let Some(error_obj) = parsed.get("error") {
-                    if let Some(error_message) = error_obj.get("message") {
-                        error = Some(error_message.as_str().unwrap_or("API Error").to_string());
-                    } else {
-                        error = Some("Unknown API Error".to_string());
+                    
+                    // Handle errors
+                    if let Some(error_obj) = parsed.get("error") {
+                        if let Some(error_message) = error_obj["message"].as_str() {
+                            error = Some(error_message.to_string());
+                        }
+                        done = true;
+                        break;
                     }
-                    done = true;
                 }
-            } else {
-                // If we can't parse as JSON, it might be malformed data
-                eprintln!("Failed to parse Volcengine SSE data as JSON: {}", data_content);
             }
         }
-        
-        i += 1;
     }
+    
+    // Remove only the processed complete lines from buffer
+    if processed_chars > 0 {
+        text.drain(0..processed_chars);
+    }
+    
+    // Combine all content parts - return content if we have any parts (including empty ones during streaming)
+    let content = if content_parts.is_empty() {
+        None
+    } else {
+        Some(content_parts.join(""))
+    };
+    
+    let thinking_content = if thinking_parts.is_empty() {
+        None 
+    } else {
+        Some(thinking_parts.join(""))
+    };
     
     Ok(StreamChunk {
         content,

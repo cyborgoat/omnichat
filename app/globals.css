@@ -159,6 +159,18 @@
   body {
     @apply bg-background text-foreground h-full;
   }
+  
+  /* Make placeholder text more transparent and subtle */
+  input::placeholder,
+  textarea::placeholder {
+    opacity: 0.4;
+    color: hsl(var(--muted-foreground));
+  }
+  
+  input:focus::placeholder,
+  textarea:focus::placeholder {
+    opacity: 0.3;
+  }
 }
 
 /* Custom scrollbar utility */

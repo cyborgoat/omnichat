@@ -147,6 +147,9 @@ export default function MessageList({ messages }: MessageListProps) {
           }
 
           const msg = item as Message;
+          const isThinking = msg.isStreaming && !msg.text && msg.thinkingSteps && msg.thinkingSteps.length > 0;
+          const hasThinkingContent = msg.thinkingSteps && msg.thinkingSteps.length > 0;
+          
           return (
             <motion.div
               key={msg.id}
@@ -166,6 +169,7 @@ export default function MessageList({ messages }: MessageListProps) {
                 />
               )}
               <div className="flex flex-col max-w-xl lg:max-w-3xl xl:max-w-4xl">
+                {/* Main message content */}
                 <div
                   className={`px-4 py-3 rounded-xl shadow-md border-1 border-slate-300/20
                     ${
@@ -175,7 +179,22 @@ export default function MessageList({ messages }: MessageListProps) {
                     }
                     text-sm`}
                 >
-                  {msg.sender === "bot" && msg.isStreaming && !msg.text && (
+                  {/* Show thinking content directly during streaming if no response yet */}
+                  {isThinking ? (
+                    <div className="text-muted-foreground text-sm">
+                      <div className="text-xs font-medium mb-2 opacity-75">Thinking...</div>
+                      <div className="prose prose-xs max-w-none text-muted-foreground">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeRaw]}
+                          components={{ code: CodeBlock }}
+                        >
+                          {msg.thinkingSteps?.join(" ").replace(/\s+/g, " ").trim() || ""}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  ) : msg.sender === "bot" && msg.isStreaming && !msg.text ? (
+                    // Show loading dots only when streaming with no content at all
                     <div className="flex items-center space-x-2 text-muted-foreground">
                       <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-75"></div>
                       <div className="w-2 h-2 bg-muted-foreground rounded-full animate-pulse delay-150"></div>
@@ -184,8 +203,7 @@ export default function MessageList({ messages }: MessageListProps) {
                         Working on it...
                       </TextShimmer>
                     </div>
-                  )}
-                  {msg.sender === "bot" ? (
+                  ) : msg.sender === "bot" ? (
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       rehypePlugins={[rehypeRaw]}
@@ -196,43 +214,34 @@ export default function MessageList({ messages }: MessageListProps) {
                   ) : (
                     <p className="whitespace-pre-wrap">{msg.text}</p>
                   )}
-                  {msg.sender === "bot" &&
-                    msg.thinkingSteps &&
-                    msg.thinkingSteps.length > 0 && (
-                      <Accordion
-                        type="single"
-                        collapsible
-                        className="w-full mt-2.5 text-xs"
-                        defaultValue={`thinking-${msg.id}`}
-                      >
-                        <AccordionItem
-                          value={`thinking-${msg.id}`}
-                        >
-                          <AccordionTrigger className="text-muted-foreground hover:no-underline py-1.5 px-0 text-left">
-                            {/* Show shimmer only when streaming AND no response content yet (reasoning still in progress) */}
-                            {msg.isStreaming && msg.thinkingSteps && msg.thinkingSteps.length > 0 && !msg.text.trim() ? (
-                              <TextShimmer className="text-sm" duration={0.5}>
-                                Thinking...
-                              </TextShimmer>
-                            ) : (
-                              "Show Thinking Steps"
-                            )}
-                          </AccordionTrigger>
-                          <AccordionContent className="bg-muted p-2.5 rounded-md mt-1.5">
-                            <div className="text-muted-foreground text-xs leading-relaxed prose prose-xs max-w-none">
-                              <ReactMarkdown
-                                remarkPlugins={[remarkGfm]}
-                                rehypePlugins={[rehypeRaw]}
-                                components={{ code: CodeBlock }}
-                              >
-                                {msg.thinkingSteps.join(" ").replace(/\s+/g, " ").trim()}
-                              </ReactMarkdown>
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
-                    )}
                 </div>
+
+                {/* Thinking steps accordion - only show after response is complete and has content */}
+                {msg.sender === "bot" && hasThinkingContent && !isThinking && msg.text && (
+                  <Accordion
+                    type="single"
+                    collapsible
+                    className="w-full mt-2.5 text-xs"
+                  >
+                    <AccordionItem value={`thinking-${msg.id}`}>
+                      <AccordionTrigger className="text-muted-foreground hover:no-underline py-1.5 px-0 text-left">
+                        Show Thinking Process
+                      </AccordionTrigger>
+                      <AccordionContent className="bg-muted p-2.5 rounded-md mt-1.5">
+                        <div className="text-muted-foreground text-xs leading-relaxed prose prose-xs max-w-none">
+                          <ReactMarkdown
+                            remarkPlugins={[remarkGfm]}
+                            rehypePlugins={[rehypeRaw]}
+                            components={{ code: CodeBlock }}
+                          >
+                            {msg.thinkingSteps?.join(" ").replace(/\s+/g, " ").trim() || ""}
+                          </ReactMarkdown>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                )}
+
                 {msg.timestamp && (
                   <p
                     className={`text-xs mt-1 ${

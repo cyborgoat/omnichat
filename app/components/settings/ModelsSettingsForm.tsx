@@ -12,7 +12,7 @@ import { useChatStore } from "@/app/store/chatStore";
 import { toast } from "sonner";
 import { useState, useEffect, useCallback } from "react";
 import { Brain } from "lucide-react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 import CustomModelsForm from "./CustomModelsFormSimple";
 
 interface ModelsSettingsFormProps {
@@ -27,15 +27,17 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
     setSelectedModelIds(enabledModelIds);
   }, [enabledModelIds]);
 
-  // Group models by provider (including custom models)
-  const allModels = [...availableModels, ...customModels];
-  const groupedModels = allModels.reduce((acc, model) => {
+  // Group standard models by provider (exclude custom models from this section)
+  const standardModels = availableModels;
+  const groupedStandardModels = standardModels.reduce((acc, model) => {
     if (!acc[model.provider]) {
       acc[model.provider] = [];
     }
     acc[model.provider].push(model);
     return acc;
-  }, {} as Record<string, typeof allModels>);
+  }, {} as Record<string, typeof standardModels>);
+
+  const allModels = [...availableModels, ...customModels];
 
   const handleModelToggle = (modelId: string, checked: boolean) => {
     if (checked) {
@@ -47,17 +49,17 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
   };
 
   const handleSelectAll = () => {
-    setSelectedModelIds(allModels.map(m => m.id));
+    setSelectedModelIds(standardModels.map(m => m.id));
     setIsDirty(true);
   };
 
   const handleDeselectAll = () => {
-    setSelectedModelIds([]);
+    setSelectedModelIds(prev => prev.filter(id => !standardModels.map(m => m.id).includes(id)));
     setIsDirty(true);
   };
 
   const handleProviderToggle = (provider: string, checked: boolean) => {
-    const providerModelIds = groupedModels[provider].map(m => m.id);
+    const providerModelIds = groupedStandardModels[provider].map(m => m.id);
     if (checked) {
       setSelectedModelIds(prev => [...new Set([...prev, ...providerModelIds])]);
     } else {
@@ -105,128 +107,119 @@ export function ModelsSettingsForm({ setIsDirty }: ModelsSettingsFormProps) {
   }, [handleSave, handleCancel]);
 
   return (
-    <div className="space-y-4 py-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-md font-medium">Models Configuration</h3>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-sm font-medium">Models Configuration</h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          Manage your available AI models. Select which models appear in the sidebar.
+        </p>
       </div>
 
-      <p className="text-xs text-muted-foreground">
-        Manage your available AI models. Standard models are pre-configured, while custom models allow you to add your own OpenAI-compatible endpoints.
-      </p>
-
-      <Tabs defaultValue="standard" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="standard">Standard Models</TabsTrigger>
-          <TabsTrigger value="custom">Custom Models</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="standard" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="text-sm font-medium">Active Standard Models</h4>
-            <div className="flex gap-2">
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm" 
-                onClick={handleSelectAll}
-                className="text-xs"
-              >
-                Select All
-              </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm" 
-                onClick={handleDeselectAll}
-                className="text-xs"
-              >
-                Deselect All
-              </Button>
-            </div>
+      {/* Standard Models Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-medium">Standard Models</h4>
+          <div className="flex gap-2">
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm" 
+              onClick={handleSelectAll}
+              className="text-xs"
+            >
+              Select All
+            </Button>
+            <Button 
+              type="button" 
+              variant="outline" 
+              size="sm" 
+              onClick={handleDeselectAll}
+              className="text-xs"
+            >
+              Deselect All
+            </Button>
           </div>
+        </div>
 
-          <p className="text-xs text-muted-foreground">
-            Choose which models appear in the sidebar model selection menu. Only selected models will be available for new chats.
-          </p>
+        <Accordion type="multiple" defaultValue={Object.keys(groupedStandardModels)} className="w-full">
+          {Object.entries(groupedStandardModels).map(([provider, models]) => {
+            const providerModelIds = models.map(m => m.id);
+            const selectedProviderModels = selectedModelIds.filter(id => providerModelIds.includes(id));
+            const isProviderFullySelected = selectedProviderModels.length === providerModelIds.length;
+            const isProviderPartiallySelected = selectedProviderModels.length > 0 && selectedProviderModels.length < providerModelIds.length;
 
-      <Accordion type="multiple" defaultValue={Object.keys(groupedModels)} className="w-full">
-        {Object.entries(groupedModels).map(([provider, models]) => {
-          const providerModelIds = models.map(m => m.id);
-          const selectedProviderModels = selectedModelIds.filter(id => providerModelIds.includes(id));
-          const isProviderFullySelected = selectedProviderModels.length === providerModelIds.length;
-          const isProviderPartiallySelected = selectedProviderModels.length > 0 && selectedProviderModels.length < providerModelIds.length;
-
-          return (
-            <AccordionItem key={provider} value={provider}>
-              <div className="flex items-center justify-between py-4 px-1">
-                <div className="flex items-center space-x-2 flex-1">
-                  <Checkbox
-                    id={`provider-${provider}`}
-                    checked={isProviderFullySelected}
-                    ref={(el) => {
-                      if (el) {
-                        const input = el.querySelector('input');
-                        if (input) input.indeterminate = isProviderPartiallySelected;
-                      }
-                    }}
-                    onCheckedChange={(checked) => handleProviderToggle(provider, checked as boolean)}
-                  />
-                  <label 
-                    htmlFor={`provider-${provider}`}
-                    className="text-sm font-medium cursor-pointer"
-                  >
-                    {provider}
-                  </label>
+            return (
+              <AccordionItem key={provider} value={provider}>
+                <div className="flex items-center justify-between py-3 px-1">
+                  <div className="flex items-center space-x-2 flex-1">
+                    <Checkbox
+                      id={`provider-${provider}`}
+                      checked={isProviderFullySelected}
+                      ref={(el) => {
+                        if (el) {
+                          const input = el.querySelector('input');
+                          if (input) input.indeterminate = isProviderPartiallySelected;
+                        }
+                      }}
+                      onCheckedChange={(checked) => handleProviderToggle(provider, checked as boolean)}
+                    />
+                    <label 
+                      htmlFor={`provider-${provider}`}
+                      className="text-sm font-medium cursor-pointer"
+                    >
+                      {provider}
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-4">
+                    <span className="text-xs text-muted-foreground">
+                      {selectedProviderModels.length}/{providerModelIds.length}
+                    </span>
+                    <AccordionTrigger className="hover:no-underline p-0 h-auto [&[data-state=open]>svg]:rotate-180">
+                      <span className="sr-only">Toggle {provider} models</span>
+                    </AccordionTrigger>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-4">
-                  <span className="text-xs text-muted-foreground">
-                    {selectedProviderModels.length}/{providerModelIds.length}
-                  </span>
-                  <AccordionTrigger className="hover:no-underline p-0 h-auto [&[data-state=open]>svg]:rotate-180">
-                    <span className="sr-only">Toggle {provider} models</span>
-                  </AccordionTrigger>
-                </div>
-              </div>
-              
-              <AccordionContent>
-                <div className="space-y-2 ml-6">
-                  {models.map((model) => (
-                    <div key={model.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={model.id}
-                        checked={selectedModelIds.includes(model.id)}
-                        onCheckedChange={(checked) => handleModelToggle(model.id, checked as boolean)}
-                      />
-                      <label 
-                        htmlFor={model.id}
-                        className="text-xs cursor-pointer flex-1"
-                      >
-                        <div className="flex items-center gap-1">
-                          <span>{model.name}</span>
-                          {model.hasReasoning && <Brain size={16} className="text-slate-600 dark:text-slate-400 !size-3.5" />}
-                          {model.isCustom && <span className="text-xs text-blue-600 dark:text-blue-400">(Custom)</span>}
-                        </div>
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          );
-        })}
-      </Accordion>
+                
+                <AccordionContent>
+                  <div className="space-y-2 ml-6 pb-2">
+                    {models.map((model) => (
+                      <div key={model.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={model.id}
+                          checked={selectedModelIds.includes(model.id)}
+                          onCheckedChange={(checked) => handleModelToggle(model.id, checked as boolean)}
+                        />
+                        <label 
+                          htmlFor={model.id}
+                          className="text-xs cursor-pointer flex-1"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span>{model.name}</span>
+                            {model.hasReasoning && <Brain size={14} className="text-muted-foreground" />}
+                          </div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            );
+          })}
+        </Accordion>
 
-      <div className="pt-2">
         <div className="text-xs text-muted-foreground">
-          {selectedModelIds.length} of {allModels.length} models selected
+          {selectedModelIds.filter(id => standardModels.map(m => m.id).includes(id)).length} of {standardModels.length} standard models selected
         </div>
       </div>
-          </TabsContent>
-          
-          <TabsContent value="custom">
-            <CustomModelsForm setIsDirty={setIsDirty} />
-          </TabsContent>
-        </Tabs>
+
+      <Separator />
+
+      {/* Custom Models Section */}
+      <CustomModelsForm setIsDirty={setIsDirty} />
+
+      <div className="text-xs text-muted-foreground pt-2 border-t">
+        Total: {selectedModelIds.length} of {allModels.length} models selected
+      </div>
     </div>
   );
 }

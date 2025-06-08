@@ -26,31 +26,3 @@ export const SIDEBAR_COLLAPSED_WIDTH = 60;
 export const API_ENDPOINTS = {
   CHAT: "/api/chat",
 } as const;
-
-// Provider information
-export const PROVIDER_INFO = {
-  OpenAI: {
-    name: "OpenAI",
-    apiKeyUrl: "https://platform.openai.com/api-keys",
-  },
-  Google: {
-    name: "Google (Gemini)",
-    apiKeyUrl: "https://makersuite.google.com/app/apikey",
-  },
-  Anthropic: {
-    name: "Anthropic",
-    apiKeyUrl: "https://console.anthropic.com/",
-  },
-  Deepseek: {
-    name: "Deepseek",
-    apiKeyUrl: "https://platform.deepseek.com/",
-  },
-  Qwen: {
-    name: "Qwen (Dashscope)",
-    apiKeyUrl: "https://dashscope.aliyun.com/",
-  },
-  Volces: {
-    name: "Volces (Volcengine)",
-    apiKeyUrl: "https://console.volcengine.com/ark/",
-  },
-} as const;

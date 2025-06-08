@@ -5,26 +5,11 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
 import { useChatStore } from "@/app/store/chatStore";
 import { Eye, EyeOff } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Define the schema for API keys using provider names from chatStore
 const apiKeySchema = z.object({
@@ -62,22 +47,29 @@ export function ApiKeysSettingsForm({ setIsDirty }: ApiKeysSettingsFormProps) {
   });
 
   useEffect(() => {
-    const subscription = apiKeyForm.watch(() => setIsDirty(apiKeyForm.formState.isDirty));
+    const subscription = apiKeyForm.watch(() =>
+      setIsDirty(apiKeyForm.formState.isDirty)
+    );
     return () => subscription.unsubscribe();
   }, [apiKeyForm, setIsDirty]);
 
-  const onApiKeySubmit = useCallback((data: ApiKeyFormValues) => {
-    // Default empty API keys to "None" instead of empty string
-    if (data.OpenAI !== undefined) setApiKey("OpenAI", data.OpenAI || "None");
-    if (data.Google !== undefined) setApiKey("Google", data.Google || "None");
-    if (data.Qwen !== undefined) setApiKey("Qwen", data.Qwen || "None");
-    if (data.Deepseek !== undefined) setApiKey("Deepseek", data.Deepseek || "None");
-    if (data.Anthropic !== undefined) setApiKey("Anthropic", data.Anthropic || "None");
-    if (data.Volces !== undefined) setApiKey("Volces", data.Volces || "None");
-    toast.success("API keys saved!");
-    setIsDirty(false);
-    apiKeyForm.reset(data);
-  }, [setApiKey, setIsDirty, apiKeyForm]);
+  const onApiKeySubmit = useCallback(
+    (data: ApiKeyFormValues) => {
+      // Default empty API keys to "None" instead of empty string
+      if (data.OpenAI !== undefined) setApiKey("OpenAI", data.OpenAI || "None");
+      if (data.Google !== undefined) setApiKey("Google", data.Google || "None");
+      if (data.Qwen !== undefined) setApiKey("Qwen", data.Qwen || "None");
+      if (data.Deepseek !== undefined)
+        setApiKey("Deepseek", data.Deepseek || "None");
+      if (data.Anthropic !== undefined)
+        setApiKey("Anthropic", data.Anthropic || "None");
+      if (data.Volces !== undefined) setApiKey("Volces", data.Volces || "None");
+      toast.success("API keys saved!");
+      setIsDirty(false);
+      apiKeyForm.reset(data);
+    },
+    [setApiKey, setIsDirty, apiKeyForm]
+  );
 
   const onCancel = useCallback(() => {
     apiKeyForm.reset();
@@ -87,23 +79,32 @@ export function ApiKeysSettingsForm({ setIsDirty }: ApiKeysSettingsFormProps) {
   // Listen for save/cancel events from parent dialog
   useEffect(() => {
     const handleSaveEvent = (event: CustomEvent) => {
-      if (event.detail.tab === 'apiKeys') {
+      if (event.detail.tab === "apiKeys") {
         apiKeyForm.handleSubmit(onApiKeySubmit)();
       }
     };
 
     const handleCancelEvent = (event: CustomEvent) => {
-      if (event.detail.tab === 'apiKeys') {
+      if (event.detail.tab === "apiKeys") {
         onCancel();
       }
     };
 
-    window.addEventListener('settings-save', handleSaveEvent as EventListener);
-    window.addEventListener('settings-cancel', handleCancelEvent as EventListener);
+    window.addEventListener("settings-save", handleSaveEvent as EventListener);
+    window.addEventListener(
+      "settings-cancel",
+      handleCancelEvent as EventListener
+    );
 
     return () => {
-      window.removeEventListener('settings-save', handleSaveEvent as EventListener);
-      window.removeEventListener('settings-cancel', handleCancelEvent as EventListener);
+      window.removeEventListener(
+        "settings-save",
+        handleSaveEvent as EventListener
+      );
+      window.removeEventListener(
+        "settings-cancel",
+        handleCancelEvent as EventListener
+      );
     };
   }, [apiKeyForm, onApiKeySubmit, onCancel]);
 
@@ -116,76 +117,87 @@ export function ApiKeysSettingsForm({ setIsDirty }: ApiKeysSettingsFormProps) {
     label: string;
     description: string;
   }[] = [
-    { name: "OpenAI", label: "OpenAI", description: "Enter your OpenAI API Key." },
-    { name: "Google", label: "Google (Gemini)", description: "Enter your Google Gemini API Key." },
-    { name: "Qwen", label: "Qwen (Dashscope)", description: "Enter your Alibaba Cloud Qwen/Dashscope API Key." },
-    { name: "Deepseek", label: "Deepseek", description: "Enter your Deepseek API Key." },
-    { name: "Anthropic", label: "Anthropic", description: "Enter your Anthropic API Key." },
-    { name: "Volces", label: "Volces (Volcengine)", description: "Enter your Volcengine API Key." },
+    { name: "OpenAI", label: "OpenAI", description: "For GPT models" },
+    {
+      name: "Google",
+      label: "Google (Gemini)",
+      description: "For Gemini models",
+    },
+    { name: "Qwen", label: "Qwen (Dashscope)", description: "For Qwen models" },
+    { name: "Deepseek", label: "Deepseek", description: "For Deepseek models" },
+    { name: "Anthropic", label: "Anthropic", description: "For Claude models" },
+    {
+      name: "Volces",
+      label: "Volces (Volcengine)",
+      description: "For Volcengine models",
+    },
   ];
 
   return (
-    <Form {...apiKeyForm}>
+    <div className="space-y-4">
+      <div>
+        <h3 className="text-sm font-medium">API Key Management</h3>
+        <p className="text-xs text-muted-foreground mt-1">
+          Configure your API keys for different AI providers. Leave empty to
+          disable a provider.
+        </p>
+      </div>
+
       <form
         onSubmit={apiKeyForm.handleSubmit(onApiKeySubmit)}
-        className="space-y-4"
+        className="space-y-3"
       >
-        <h3 className="text-md font-medium">API Key Management</h3>
-        <ScrollArea className="max-h-[350px] pr-3">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[160px] px-4 py-1.5 text-sm font-medium text-muted-foreground sticky top-0 bg-background z-10">Provider</TableHead>
-                <TableHead className="px-4 py-1.5 text-sm font-medium text-muted-foreground sticky top-0 bg-background z-10">API Key</TableHead>
-                <TableHead className="w-[80px] px-4 py-1.5 text-right text-sm font-medium text-muted-foreground sticky top-0 bg-background z-10">Visibility</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {apiKeyFields.map((item) => (
-                <TableRow key={item.name} className="hover:bg-muted/50">
-                  <TableCell className="px-2 py-1.5 align-middle text-xs">{item.label}</TableCell>
-                  <TableCell className="px-2 py-1.5 align-middle">
-                    <FormField
-                      control={apiKeyForm.control}
-                      name={item.name}
-                      render={({ field }) => (
-                        <FormItem className="m-0 p-0 flex-grow">
-                          <FormControl>
-                            <Input
-                              type={visibleFields[item.name] ? "text" : "password"}
-                              placeholder={`Enter API Key`}
-                              {...field}
-                              value={field.value || ""}
-                              className="h-9 w-full rounded-md border px-3 py-2 text-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                            />
-                          </FormControl>
-                          <FormMessage className="text-xs mt-1" />
-                        </FormItem>
-                      )}
-                    />
-                  </TableCell>
-                  <TableCell className="px-4 py-1.5 align-middle text-right">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => toggleVisibility(item.name)}
-                      className="h-9 w-9 flex-shrink-0 rounded-full data-[state=open]:bg-muted"
-                    >
-                      {visibleFields[item.name] ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </ScrollArea>
+        <div className="space-y-3">
+          {apiKeyFields.map((item) => {
+            const fieldValue = apiKeyForm.watch(item.name);
+            return (
+              <div key={item.name} className="space-y-1">
+                <Label htmlFor={item.name} className="text-xs font-medium">
+                  {item.label}
+                </Label>
+                <div className="relative">
+                  <Input
+                    id={item.name}
+                    type={visibleFields[item.name] ? "text" : "password"}
+                    placeholder="Enter API key"
+                    {...apiKeyForm.register(item.name)}
+                    value={fieldValue || ""}
+                    onChange={(e) => {
+                      apiKeyForm.setValue(item.name, e.target.value);
+                      setIsDirty(true);
+                    }}
+                    className="h-8 text-xs pr-8"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => toggleVisibility(item.name)}
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                  >
+                    {visibleFields[item.name] ? (
+                      <EyeOff size={12} />
+                    ) : (
+                      <Eye size={12} />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </form>
-    </Form>
+
+      <div className="text-xs text-muted-foreground bg-stone-50 dark:bg-stone-950/20 p-3 rounded-md border border-stone-200 dark:border-stone-800">
+        <p className="font-medium mb-1 text-stone-800 dark:text-stone-200">
+          💡 Tip:
+        </p>
+        <p className="text-stone-700 dark:text-stone-300">
+          API keys are stored locally in your browser and never sent to external
+          servers except the respective AI providers.
+        </p>
+      </div>
+    </div>
   );
 }
 

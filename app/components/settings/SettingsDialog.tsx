@@ -49,11 +49,9 @@ export function SettingsDialog({ isMenuCollapsed, triggerButtonClassName }: Sett
   };
 
   const handleConfirmNavigation = () => {
-    setIsDirty(false); // Reset dirty state
+    setIsDirty(false);
     setActiveTab(nextTab);
     setShowConfirmDialog(false);
-    // Here you might want to add logic to actually save or discard changes
-    // For now, we just allow navigation.
   };
 
   const handleCancelNavigation = () => {
@@ -61,14 +59,12 @@ export function SettingsDialog({ isMenuCollapsed, triggerButtonClassName }: Sett
   };
 
   const handleSave = () => {
-    // Trigger save for the current active tab
     const event = new CustomEvent('settings-save', { detail: { tab: activeTab } });
     window.dispatchEvent(event);
     setIsDirty(false);
   };
 
   const handleCancel = () => {
-    // Trigger cancel for the current active tab
     const event = new CustomEvent('settings-cancel', { detail: { tab: activeTab } });
     window.dispatchEvent(event);
     setIsDirty(false);
@@ -76,49 +72,56 @@ export function SettingsDialog({ isMenuCollapsed, triggerButtonClassName }: Sett
 
   const shouldShowSaveCancel = activeTab === "models" || activeTab === "apiKeys";
   
-      return (
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogTrigger asChild>
-          <Button 
-            variant="ghost" 
-            className={triggerButtonClassName || defaultClassName}
-          >
-            <SettingsIcon size={20} className={`${!isMenuCollapsed ? 'mr-2' : ''}`} />
-            {!isMenuCollapsed && <span className="ml-1">Settings</span>}
-            <span className="sr-only">Open Settings</span>
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto sm:w-[600px]">
-        <DialogHeader>
-          <DialogTitle>Settings</DialogTitle>
-          <DialogDescription>
-            Manage your application settings. Click save when you&apos;re done.
+  return (
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <DialogTrigger asChild>
+        <Button 
+          variant="ghost" 
+          className={triggerButtonClassName || defaultClassName}
+        >
+          <SettingsIcon size={20} className={`${!isMenuCollapsed ? 'mr-2' : ''}`} />
+          {!isMenuCollapsed && <span className="ml-1">Settings</span>}
+          <span className="sr-only">Open Settings</span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto sm:w-[600px]">
+        <DialogHeader className="pb-4">
+          <DialogTitle className="text-lg">Settings</DialogTitle>
+          <DialogDescription className="text-sm text-muted-foreground">
+            Configure your AI models, API keys, and advanced options.
           </DialogDescription>
         </DialogHeader>
-        <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 gap-1">
-            <TabsTrigger value="models" className="text-xs sm:text-sm">Models</TabsTrigger>
-            <TabsTrigger value="apiKeys" className="text-xs sm:text-sm">API Keys</TabsTrigger>
-            <TabsTrigger value="advanced" className="text-xs sm:text-sm">Advanced</TabsTrigger>
-          </TabsList>
-          <TabsContent value="models" className="mt-4 px-1 sm:px-0">
-            <ModelsSettingsForm setIsDirty={setIsDirty} />
-          </TabsContent>
-          <TabsContent value="apiKeys" className="mt-4 px-1 sm:px-0">
-            <ApiKeysSettingsForm setIsDirty={setIsDirty} />
-          </TabsContent>
-          <TabsContent value="advanced" className="mt-4 px-1 sm:px-0">
-            <AdvancedSettingsForm setIsDirty={setIsDirty} />
-          </TabsContent>
-        </Tabs>
+        
+        <div className="space-y-4">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 h-9">
+              <TabsTrigger value="models" className="text-xs">Models</TabsTrigger>
+              <TabsTrigger value="apiKeys" className="text-xs">API Keys</TabsTrigger>
+              <TabsTrigger value="advanced" className="text-xs">Advanced</TabsTrigger>
+            </TabsList>
+            
+            <div className="mt-4">
+              <TabsContent value="models" className="mt-0">
+                <ModelsSettingsForm setIsDirty={setIsDirty} />
+              </TabsContent>
+              <TabsContent value="apiKeys" className="mt-0">
+                <ApiKeysSettingsForm setIsDirty={setIsDirty} />
+              </TabsContent>
+              <TabsContent value="advanced" className="mt-0">
+                <AdvancedSettingsForm setIsDirty={setIsDirty} />
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+        
         {shouldShowSaveCancel && (
-          <div className="flex gap-2 mt-6 pt-4 border-t">
+          <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
             <Button 
               type="button" 
               variant="outline" 
               onClick={handleCancel} 
               disabled={!isDirty}
-              className="text-xs"
+              size="sm"
             >
               Cancel
             </Button>
@@ -126,23 +129,24 @@ export function SettingsDialog({ isMenuCollapsed, triggerButtonClassName }: Sett
               type="button" 
               onClick={handleSave} 
               disabled={!isDirty}
-              className="text-xs"
+              size="sm"
             >
               Save Changes
             </Button>
           </div>
         )}
+        
         <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
               <AlertDialogDescription>
-                You have unsaved changes. Are you sure you want to leave this tab? Your changes will be lost.
+                You have unsaved changes. Are you sure you want to switch tabs? Your changes will be lost.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel onClick={handleCancelNavigation}>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleConfirmNavigation}>Confirm</AlertDialogAction>
+              <AlertDialogAction onClick={handleConfirmNavigation}>Continue</AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
