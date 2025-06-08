@@ -25,12 +25,8 @@ pub async fn handle_custom_request(request: ChatRequest) -> Result<Pin<Box<dyn f
         return Err(anyhow::anyhow!("Custom model ID must contain endpoint information"));
     };
     
-    // Ensure endpoint ends with /v1/chat/completions
-    let full_endpoint = if api_endpoint.ends_with("/v1/chat/completions") {
-        api_endpoint
-    } else {
-        format!("{}/v1/chat/completions", api_endpoint.trim_end_matches('/'))
-    };
+    // Use the endpoint exactly as provided by the user
+    let full_endpoint = api_endpoint;
     
     // Filter and format messages for OpenAI-compatible API
     let mut api_messages = Vec::new();
@@ -129,8 +125,8 @@ fn create_client(proxy_settings: &Option<ProxySettings>) -> Result<Client> {
 }
 
 fn parse_custom_stream_chunk(text: &str) -> Result<StreamChunk> {
-    let mut content = None;
-    let mut thinking_content = None;
+    let mut content_parts = Vec::new();
+    let mut thinking_parts = Vec::new();
     let mut done = false;
     let mut error = None;
     
@@ -149,20 +145,20 @@ fn parse_custom_stream_chunk(text: &str) -> Result<StreamChunk> {
                 if let Some(choices) = parsed["choices"].as_array() {
                     if let Some(choice) = choices.get(0) {
                         if let Some(delta) = choice.get("delta") {
-                            // Handle regular content
-                            if let Some(text) = delta["content"].as_str() {
-                                content = Some(text.to_string());
+                            // Handle regular content - collect ALL content, including empty strings
+                            if let Some(content_text) = delta["content"].as_str() {
+                                content_parts.push(content_text.to_string());
                             }
                             
-                            // Handle reasoning/thinking content (for reasoning models)
+                            // Handle reasoning/thinking content - preserve original spacing
                             if let Some(reasoning_text) = delta["reasoning_content"].as_str() {
-                                thinking_content = Some(reasoning_text.to_string());
+                                thinking_parts.push(reasoning_text.to_string());
                             }
                         }
                         
                         // Check for finish reason
                         if let Some(finish_reason) = choice["finish_reason"].as_str() {
-                            if finish_reason == "stop" {
+                            if finish_reason == "stop" || finish_reason == "length" {
                                 done = true;
                             }
                         }
@@ -177,6 +173,19 @@ fn parse_custom_stream_chunk(text: &str) -> Result<StreamChunk> {
             }
         }
     }
+    
+    // Combine all content parts - return content if we have any parts (including empty ones during streaming)
+    let content = if content_parts.is_empty() {
+        None
+    } else {
+        Some(content_parts.join(""))
+    };
+    
+    let thinking_content = if thinking_parts.is_empty() {
+        None 
+    } else {
+        Some(thinking_parts.join(""))
+    };
     
     Ok(StreamChunk {
         content,

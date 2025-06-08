@@ -117,10 +117,24 @@ export function AppSidebar() {
         : unsavedGlobalSystemPrompt !== globalSystemPrompt;
 
     const groupedModels = useMemo(() => {
-        return enabledModels.reduce((acc, model) => {
+        const grouped = enabledModels.reduce((acc, model) => {
             (acc[model.provider] = acc[model.provider] || []).push(model);
             return acc;
         }, {} as Record<string, Model[]>);
+        
+        // Sort providers to prioritize Custom models first
+        const sortedProviders = Object.keys(grouped).sort((a, b) => {
+            if (a === "Custom") return -1;
+            if (b === "Custom") return 1;
+            return a.localeCompare(b);
+        });
+        
+        const sortedGrouped: Record<string, Model[]> = {};
+        sortedProviders.forEach(provider => {
+            sortedGrouped[provider] = grouped[provider];
+        });
+        
+        return sortedGrouped;
     }, [enabledModels]);
 
     const handleRenameSession = () => {

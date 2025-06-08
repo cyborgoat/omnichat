@@ -39,6 +39,8 @@ export function CustomModelsForm({ setIsDirty }: CustomModelsFormProps) {
         headers: "",
     });
 
+
+
     const resetForm = () => {
         setFormData({
             name: "",
@@ -68,7 +70,7 @@ export function CustomModelsForm({ setIsDirty }: CustomModelsFormProps) {
                 }
             }
 
-            const cleanApiEndpoint = formData.apiEndpoint.replace(/\/v1\/chat\/completions\/?$/, '');
+            const cleanApiEndpoint = formData.apiEndpoint.trim();
 
             const customConfig: CustomModelConfig = {
                 apiEndpoint: cleanApiEndpoint,
@@ -151,16 +153,24 @@ export function CustomModelsForm({ setIsDirty }: CustomModelsFormProps) {
         if (!model.customConfig) return;
 
         try {
-            const response = await fetch(
-                model.customConfig.apiEndpoint.replace(/\/$/, "") + "/v1/models",
-                {
-                    method: "GET",
-                    headers: {
-                        "Content-Type": "application/json",
-                        ...model.customConfig.headers,
-                    },
-                }
-            );
+            // Try to construct a models endpoint from the chat completions endpoint
+            let modelsEndpoint = model.customConfig.apiEndpoint;
+            if (modelsEndpoint.endsWith('/v1/chat/completions')) {
+                modelsEndpoint = modelsEndpoint.replace('/v1/chat/completions', '/v1/models');
+            } else if (modelsEndpoint.endsWith('/chat/completions')) {
+                modelsEndpoint = modelsEndpoint.replace('/chat/completions', '/models');
+            } else {
+                // If we can't determine the models endpoint, just try appending /models
+                modelsEndpoint = modelsEndpoint.replace(/\/$/, "") + "/models";
+            }
+            
+            const response = await fetch(modelsEndpoint, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...model.customConfig.headers,
+                },
+            });
 
             if (response.ok) {
                 toast.success(`Connection to ${model.name} successful!`);
@@ -171,6 +181,8 @@ export function CustomModelsForm({ setIsDirty }: CustomModelsFormProps) {
             toast.error(`Connection failed: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
     };
+
+
 
     return (
         <div className="space-y-4">
@@ -213,6 +225,21 @@ export function CustomModelsForm({ setIsDirty }: CustomModelsFormProps) {
                         </Button>
                     </div>
                     
+                    {/* Compact warnings section */}
+                    <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-md p-3 space-y-2">
+                        <div className="flex items-start gap-2">
+                            <AlertTriangle size={14} className="text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                            <div className="text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                                <p><strong>Model Name:</strong> Must match exactly with the API endpoint&apos;s model name</p>
+                                <p><strong>API Endpoint:</strong> Full URL including path. Examples:</p>
+                                <div className="ml-2 space-y-0.5">
+                                    <p className="font-mono text-[10px]">• vLLM: http://localhost:8000/v1/chat/completions</p>
+                                    <p className="font-mono text-[10px]">• Ollama: http://localhost:11434/v1/chat/completions</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <form onSubmit={onSubmit} className="space-y-4">
                         <div className="grid grid-cols-2 gap-3">
                             <div>
@@ -240,12 +267,6 @@ export function CustomModelsForm({ setIsDirty }: CustomModelsFormProps) {
                                     required
                                     className="mt-1"
                                 />
-                                <div className="flex items-start gap-1 mt-1">
-                                    <AlertTriangle size={12} className="text-amber-500 mt-0.5 flex-shrink-0" />
-                                    <p className="text-xs text-amber-600 dark:text-amber-400">
-                                        Must match exactly with the API endpoint's model name
-                                    </p>
-                                </div>
                             </div>
                         </div>
 
@@ -257,7 +278,7 @@ export function CustomModelsForm({ setIsDirty }: CustomModelsFormProps) {
                                 onChange={(e) =>
                                     setFormData({ ...formData, apiEndpoint: e.target.value })
                                 }
-                                placeholder="http://localhost:8000"
+                                placeholder="http://localhost:8000/v1/chat/completions"
                                 required
                                 className="mt-1"
                             />

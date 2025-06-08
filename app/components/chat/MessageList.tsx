@@ -189,7 +189,7 @@ export default function MessageList({ messages }: MessageListProps) {
                           rehypePlugins={[rehypeRaw]}
                           components={{ code: CodeBlock }}
                         >
-                          {msg.thinkingSteps?.join(" ").replace(/\s+/g, " ").trim() || ""}
+                          {msg.thinkingSteps?.join("") || ""}
                         </ReactMarkdown>
                       </div>
                     </div>
@@ -234,7 +234,7 @@ export default function MessageList({ messages }: MessageListProps) {
                             rehypePlugins={[rehypeRaw]}
                             components={{ code: CodeBlock }}
                           >
-                            {msg.thinkingSteps?.join(" ").replace(/\s+/g, " ").trim() || ""}
+                            {msg.thinkingSteps?.join("") || ""}
                           </ReactMarkdown>
                         </div>
                       </AccordionContent>
